@@ -10,17 +10,16 @@ import (
 )
 
 const (
-	defaultHTTPPort               = "8000"
-	defaultHTTPRWTimeout          = 10 * time.Second
-	defaultHTTPMaxHeaderMegabytes = 1
-
-	EnvLocal = "local"
+	defaultGRPCPort = "9090"
+	authority       = "qrcode-generation-service"
+	EnvLocal        = "local"
 )
 
 type (
 	Config struct {
 		Environment string
-		HTTP        HTTPConfig
+		Authority   string
+		GRPC        GRPCConfig `mapstructure:"grpc"`
 		Postgres    PostgresConfig
 	}
 
@@ -28,12 +27,10 @@ type (
 		URI string
 	}
 
-	HTTPConfig struct {
-		Host               string        `mapstructure:"host"`
-		Port               string        `mapstructure:"port"`
-		ReadTimeout        time.Duration `mapstructure:"readTimeout"`
-		WriteTimeout       time.Duration `mapstructure:"writeTimeout"`
-		MaxHeaderMegabytes int           `mapstructure:"maxHeaderBytes"`
+	GRPCConfig struct {
+		Host    string        `mapstructure:"host"`
+		Port    string        `mapstructure:"port"`
+		Timeout time.Duration `mapstructure:"timeout"`
 	}
 )
 
@@ -55,15 +52,17 @@ func Init(configsDir, envDir string) (*Config, error) {
 }
 
 func unmarshal(cfg *Config) error {
-	return viper.UnmarshalKey("http", &cfg.HTTP)
+	return viper.UnmarshalKey("grpc", &cfg.GRPC)
 }
 
 func setFromEnv(cfg *Config) {
 	cfg.Postgres.URI = os.Getenv("POSTGRES_URI")
 
-	cfg.HTTP.Host = os.Getenv("HTTP_HOST")
+	cfg.GRPC.Host = os.Getenv("GRPC_HOST")
 
-	cfg.Environment = "development"
+	cfg.Environment = EnvLocal
+	cfg.Authority = authority
+	cfg.Environment = EnvLocal
 }
 
 func parseConfigFile(folder, env string) error {
@@ -89,8 +88,5 @@ func loadEnvVariables(envPath string) {
 }
 
 func populateDefaults() {
-	viper.SetDefault("http.port", defaultHTTPPort)
-	viper.SetDefault("http.max_header_megabytes", defaultHTTPMaxHeaderMegabytes)
-	viper.SetDefault("http.timeouts.read", defaultHTTPRWTimeout)
-	viper.SetDefault("http.timeouts.write", defaultHTTPRWTimeout)
+	viper.SetDefault("grpc.port", defaultGRPCPort)
 }

@@ -1,31 +1,28 @@
 package server
 
 import (
-	"context"
-	"dip/internal/config"
-	"net/http"
+	"google.golang.org/grpc"
+	"net"
 )
 
 type Server struct {
-	httpServer *http.Server
+	GrpcServer *grpc.Server
 }
 
-func NewServer(cfg *config.Config, handler http.Handler) *Server {
+func NewServer() *Server {
 	return &Server{
-		httpServer: &http.Server{
-			Addr:           "localhost:" + cfg.HTTP.Port,
-			Handler:        handler,
-			ReadTimeout:    cfg.HTTP.ReadTimeout,
-			WriteTimeout:   cfg.HTTP.WriteTimeout,
-			MaxHeaderBytes: cfg.HTTP.MaxHeaderMegabytes << 20,
-		},
+		GrpcServer: grpc.NewServer(),
 	}
+
 }
 
-func (s *Server) Run() error {
-	return s.httpServer.ListenAndServe()
+// Run runs gRPC server.
+func (s *Server) Run(l net.Listener) error {
+	return s.GrpcServer.Serve(l)
+
 }
 
-func (s *Server) Stop(ctx context.Context) error {
-	return s.httpServer.Shutdown(ctx)
+// Stop stops gRPC server.
+func (s *Server) Stop() {
+	s.GrpcServer.GracefulStop()
 }

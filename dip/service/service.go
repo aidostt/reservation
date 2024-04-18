@@ -7,7 +7,6 @@ import (
 	"dip/service/reservation"
 	"dip/service/restaurant"
 	"dip/service/table"
-
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -52,10 +51,10 @@ type Dependencies struct {
 	Domain      string
 }
 
-func NewService(repo *repository.Repository) *Service {
+func NewService(deps Dependencies) *Service {
 	return &Service{
-		Restaurants:  restaurant.NewRestaurantService(repo.Restaurants),
-		Tables:       table.NewTableService(repo.Tables),
-		Reservations: reservation.NewreservationService(repo.Reservations),
+		Restaurants:  restaurant.NewRestaurantService(deps.Repos.Restaurants),
+		Tables:       table.NewTableService(deps.Repos.Tables),
+		Reservations: reservation.NewreservationService(deps.Repos.Reservations),
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"dip/internal/config"
 	"fmt"
 	"log"
+	"net"
 
 	"dip/internal/server"
 	"dip/repository"
@@ -13,13 +14,11 @@ import (
 	"context"
 	"dip/internal/logger"
 	"errors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 	// "github.com/go-git/go-git/v5/plumbing/transport/server"
 )
 
@@ -36,38 +35,40 @@ func Run(configPath, envPath string) {
 		log.Fatalf("Unable to connection to database: %v\n", err)
 	}
 
-	fmt.Println(cfg.Postgres.URI)
 	log.Println("Connected to db")
 	defer pool.Close()
 
 	repos := repository.NewRepository(pool)
-	services := service.NewService(repos)
+	services := service.NewService(service.Dependencies{
+		Environment: cfg.Environment,
+		Domain:      cfg.GRPC.Host,
+		Repos:       repos,
+	})
 	handlers := handler.NewHandler(services)
 
-	// HTTP Server
-	srv := server.NewServer(cfg, handlers.Init())
+	// gRPC Server
+	srv := server.NewServer()
+	srv.RegisterServers(handlers)
 
+	l, err := net.Listen("tcp", fmt.Sprintf("%v:%v", cfg.GRPC.Host, cfg.GRPC.Port))
+	if err != nil {
+		logger.Errorf("error occurred while getting listener for the server: %s\n", err.Error())
+		return
+	}
 	go func() {
-		if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {
-			logger.Errorf("error occurred while running http server: %s\n", err.Error())
+		if err := srv.Run(l); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Errorf("error occurred while running grpc server: %s\n", err.Error())
 		}
 	}()
 
-	logger.Info("Server started")
+	logger.Info("Server started at: " + cfg.GRPC.Host + ":" + cfg.GRPC.Port)
 
 	// Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 
 	<-quit
-
-	const timeout = 5 * time.Second
-
-	ctx, shutdown := context.WithTimeout(context.Background(), timeout)
-	defer shutdown()
-
-	if err := srv.Stop(ctx); err != nil {
-		logger.Errorf("failed to stop server: %v", err)
-	}
+	srv.Stop()
+	logger.Info("Stopping server at: " + cfg.GRPC.Host + ":" + cfg.GRPC.Port)
 
 }
