@@ -53,13 +53,25 @@ func (r *ReservationRepo) Delete(ctx context.Context, reservationId pgtype.UUID)
 	return nil
 }
 
-func (r *ReservationRepo) GetById(ctx context.Context, resId pgtype.UUID) (*models.ReservationSql, error) {
-	query := `SELECT * FROM reservations WHERE id = $1`
-	var reservation models.ReservationSql
+func (r *ReservationRepo) GetById(ctx context.Context, resId pgtype.UUID) (*models.ReservationStruct, error) {
+	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
+restables.isreserved, restables.tablenumber,  restaurants.* 
+from reservations 
+join restables on reservations.tableid = restables.id 
+join restaurants on restables.restaurantid = restaurants.id 
+where reservations.id = $1`
+	var reservation models.ReservationStruct
 	err := r.db.QueryRow(ctx, query, resId).Scan(
 		&reservation.ID,
 		&reservation.UserID,
-		&reservation.TableID,
+		&reservation.Table.ID,
+		&reservation.Table.NumberOfSeats,
+		&reservation.Table.IsReserved,
+		&reservation.Table.TableNumber,
+		&reservation.Table.Restaurant.ID,
+		&reservation.Table.Restaurant.Name,
+		&reservation.Table.Restaurant.Address,
+		&reservation.Table.Restaurant.Contact,
 		&reservation.ReservationTime,
 	)
 	if err != nil {
@@ -72,8 +84,13 @@ func (r *ReservationRepo) GetById(ctx context.Context, resId pgtype.UUID) (*mode
 	return &reservation, nil
 }
 
-func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId pgtype.UUID) ([]*models.ReservationSql, error) {
-	query := `SELECT * FROM reservations WHERE userid = $1`
+func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId pgtype.UUID) ([]*models.ReservationStruct, error) {
+	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
+restables.isreserved, restables.tablenumber,  restaurants.* 
+from reservations 
+join restables on reservations.tableid = restables.id 
+join restaurants on restables.restaurantid = restaurants.id 
+where reservations.userId = $1`
 
 	rows, err := r.db.Query(ctx, query, userId)
 	if err != nil {
@@ -82,13 +99,20 @@ func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId pgtype.UUID
 		}
 		return nil, err
 	}
-	reservations := make([]*models.ReservationSql, 0)
+	reservations := make([]*models.ReservationStruct, 0)
 	for rows.Next() {
-		reservation := new(models.ReservationSql)
+		reservation := new(models.ReservationStruct)
 		err := rows.Scan(
 			&reservation.ID,
 			&reservation.UserID,
-			&reservation.TableID,
+			&reservation.Table.ID,
+			&reservation.Table.NumberOfSeats,
+			&reservation.Table.IsReserved,
+			&reservation.Table.TableNumber,
+			&reservation.Table.Restaurant.ID,
+			&reservation.Table.Restaurant.Name,
+			&reservation.Table.Restaurant.Address,
+			&reservation.Table.Restaurant.Contact,
 			&reservation.ReservationTime,
 		)
 		if err != nil {
@@ -111,7 +135,7 @@ func (r *ReservationRepo) Update(ctx context.Context, upReserv *models.UpdateRes
 	}
 
 	query := "UPDATE reservations SET tableid = $1, reservationtime = $2 WHERE id = $3"
-	_, err = tx.Exec(ctx, query, upReserv.TableID, upReserv.ReservationTime, upReserv.ReservationID)
+	_, err = tx.Exec(ctx, query, upReserv.TableNumber, upReserv.ReservationTime, upReserv.ReservationID)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err

@@ -1,6 +1,8 @@
 package server
 
-import "dip/handler"
+import (
+	"dip/handler"
+)
 
 func (s *Server) RegisterServers(h *handler.Handler) {
 	reservation.RegisterReservationServer(s.GrpcServer, h)

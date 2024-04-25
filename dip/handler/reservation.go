@@ -35,6 +35,7 @@ func (h *Handler) MakeReservation(c *gin.Context) {
 
 }
 
+// rewrited
 func (h *Handler) GetReservation(c *gin.Context) {
 	var getReservInp models.GetByIdInputSql
 	if err := c.BindJSON(&getReservInp); err != nil {
@@ -43,14 +44,14 @@ func (h *Handler) GetReservation(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.Reservations.GetById(c.Request.Context(), getReservInp.ID)
+	reservation, err := h.service.Reservations.GetById(c.Request.Context(), getReservInp.ID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"not found": err.Error()})
 		c.Abort()
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, reservation)
 }
 
 func (h *Handler) DeleteReservationById(c *gin.Context) {
@@ -75,7 +76,7 @@ func (h *Handler) DeleteReservationById(c *gin.Context) {
 		return
 	}
 
-	err = h.service.Tables.MarkVacant(c, reserv.TableID)
+	err = h.service.Tables.MarkVacant(c, reserv.Table.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"bad request error": err.Error()})
 		c.Abort()
@@ -84,7 +85,8 @@ func (h *Handler) DeleteReservationById(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"Reservation Deleted": nil})
 }
 
-func (h *Handler) GetAllReservByUserId(c *gin.Context) {
+// rewrited
+func (h *Handler) GetAllReservationByUserId(c *gin.Context) {
 	var allReserv models.GetAllInputSql
 	if err := c.BindJSON(&allReserv); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -92,13 +94,14 @@ func (h *Handler) GetAllReservByUserId(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.Reservations.GetAllByUserId(c.Request.Context(), allReserv.UserId)
+	reservations, err := h.service.Reservations.GetAllByUserId(c.Request.Context(), allReserv.UserId)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
 		c.Abort()
 		return
 	}
-	c.JSON(http.StatusOK, res)
+
+	c.JSON(http.StatusOK, reservations)
 }
 
 // rewrite
@@ -135,22 +138,10 @@ func (h *Handler) GetRestaurantByReservationId(c *gin.Context) {
 		return
 	}
 
-	table, err := h.service.Tables.GetById(c.Request.Context(), reserv.TableID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
-	}
-
-	res, err := h.service.Restaurants.GetById(c.Request.Context(), table.RestaurantID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
-	}
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, reserv.Table.Restaurant)
 }
 
+// rewrited
 func (h *Handler) GetTableByReservationId(c *gin.Context) {
 	var idReserv models.GetByIdInputSql
 	if err := c.BindJSON(&idReserv); err != nil {
@@ -166,12 +157,5 @@ func (h *Handler) GetTableByReservationId(c *gin.Context) {
 		return
 	}
 
-	table, err := h.service.Tables.GetById(c.Request.Context(), reserv.TableID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
-	}
-
-	c.JSON(http.StatusOK, table)
+	c.JSON(http.StatusOK, reserv.Table)
 }

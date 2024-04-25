@@ -17,11 +17,11 @@ func NewTableService(repo repo.Tables) *TableService {
 	return &TableService{repo: repo}
 }
 
-func (s *TableService) GetById(ctx context.Context, id pgtype.UUID) (*models.TableSql, error) {
+func (s *TableService) GetById(ctx context.Context, id pgtype.UUID) (*models.TableStruct, error) {
 	return s.repo.GetById(ctx, id)
 }
 
-func (s *TableService) GetAll(ctx context.Context) ([]*models.TableSql, error) {
+func (s *TableService) GetAll(ctx context.Context) ([]*models.TableStruct, error) {
 	return s.repo.GetAll(ctx)
 }
 
@@ -63,14 +63,14 @@ func (s *TableService) Delete(ctx context.Context, tableId pgtype.UUID) error {
 	return s.repo.Delete(ctx, tableId)
 }
 
-func (s *TableService) GetReserved(ctx context.Context, restid pgtype.UUID) ([]*models.TableSql, error) {
+func (s *TableService) GetReserved(ctx context.Context, restid pgtype.UUID) ([]*models.TableStruct, error) {
 	return s.repo.GetReserved(ctx, restid)
 }
 
-func (s *TableService) GetAvailable(ctx context.Context, restid pgtype.UUID) ([]*models.TableSql, error) {
+func (s *TableService) GetAvailable(ctx context.Context, restid pgtype.UUID) ([]*models.TableStruct, error) {
 	return s.repo.GetAvailable(ctx, restid)
 }
 
-func (s *TableService) GetAllByRestaurantId(ctx context.Context, restId pgtype.UUID) ([]*models.TableSql, error) {
+func (s *TableService) GetAllByRestaurantId(ctx context.Context, restId pgtype.UUID) ([]*models.TableStruct, error) {
 	return s.repo.GetAllByRestaurantId(ctx, restId)
 }

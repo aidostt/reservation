@@ -22,15 +22,21 @@ func NewRestaurantRepo(db *pgxpool.Pool) *TableRepo {
 	}
 }
 
-func (r *TableRepo) GetById(ctx context.Context, id pgtype.UUID) (*models.TableSql, error) {
-	query := `SELECT * FROM restables WHERE id = $1`
-	var table models.TableSql
+func (r *TableRepo) GetById(ctx context.Context, id pgtype.UUID) (*models.TableStruct, error) {
+	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
+from restables 
+join restaurants on restables.restaurantId = restaurants.id 
+where restables.id = $1`
+	var table models.TableStruct
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&table.ID,
 		&table.NumberOfSeats,
 		&table.IsReserved,
 		&table.TableNumber,
-		&table.RestaurantID,
+		&table.Restaurant.ID,
+		&table.Restaurant.Name,
+		&table.Restaurant.Address,
+		&table.Restaurant.Contact,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -42,16 +48,27 @@ func (r *TableRepo) GetById(ctx context.Context, id pgtype.UUID) (*models.TableS
 	return &table, nil
 }
 
-func (r *TableRepo) GetAll(ctx context.Context) ([]*models.TableSql, error) {
-	query := "SELECT * FROM restables"
+func (r *TableRepo) GetAll(ctx context.Context) ([]*models.TableStruct, error) {
+	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
+from restables 
+join restaurants on restables.restaurantId = restaurants.id`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	tables := make([]*models.TableSql, 0)
+	tables := make([]*models.TableStruct, 0)
 	for rows.Next() {
-		table := new(models.TableSql)
-		err := rows.Scan(&table.ID, &table.NumberOfSeats, &table.IsReserved, &table.TableNumber, &table.RestaurantID)
+		table := new(models.TableStruct)
+		err := rows.Scan(
+			&table.ID,
+			&table.NumberOfSeats,
+			&table.IsReserved,
+			&table.TableNumber,
+			&table.Restaurant.ID,
+			&table.Restaurant.Name,
+			&table.Restaurant.Address,
+			&table.Restaurant.Contact,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -115,8 +132,11 @@ func (r *TableRepo) UpdateById(ctx context.Context, upTable *models.UpdateTableI
 	return tx.Commit(ctx)
 }
 
-func (r *TableRepo) GetAllByRestaurantId(ctx context.Context, restId pgtype.UUID) ([]*models.TableSql, error) {
-	query := `SELECT * FROM restables WHERE restaurantid = $1`
+func (r *TableRepo) GetAllByRestaurantId(ctx context.Context, restId pgtype.UUID) ([]*models.TableStruct, error) {
+	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
+from restables 
+join restaurants on restables.restaurantId = restaurants.id 
+where restables.restaurantid = $1`
 
 	rows, err := r.db.Query(ctx, query, restId)
 	if err != nil {
@@ -125,15 +145,18 @@ func (r *TableRepo) GetAllByRestaurantId(ctx context.Context, restId pgtype.UUID
 		}
 		return nil, err
 	}
-	tables := make([]*models.TableSql, 0)
+	tables := make([]*models.TableStruct, 0)
 	for rows.Next() {
-		table := new(models.TableSql)
+		table := new(models.TableStruct)
 		err := rows.Scan(
 			&table.ID,
 			&table.NumberOfSeats,
 			&table.IsReserved,
 			&table.TableNumber,
-			&table.RestaurantID,
+			&table.Restaurant.ID,
+			&table.Restaurant.Name,
+			&table.Restaurant.Address,
+			&table.Restaurant.Contact,
 		)
 		if err != nil {
 			return nil, err
@@ -158,8 +181,11 @@ func (r *TableRepo) Delete(ctx context.Context, tableId pgtype.UUID) error {
 	return nil
 }
 
-func (r *TableRepo) GetAvailable(ctx context.Context, restid pgtype.UUID) ([]*models.TableSql, error) {
-	query := `SELECT * FROM restables WHERE isreserved = false AND restaurantid = $1`
+func (r *TableRepo) GetAvailable(ctx context.Context, restid pgtype.UUID) ([]*models.TableStruct, error) {
+	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
+from restables 
+join restaurants on restables.restaurantId = restaurants.id 
+where restables.restaurantid = $1 and restables.isreserved = false`
 
 	rows, err := r.db.Query(ctx, query, restid)
 	if err != nil {
@@ -168,15 +194,18 @@ func (r *TableRepo) GetAvailable(ctx context.Context, restid pgtype.UUID) ([]*mo
 		}
 		return nil, err
 	}
-	tables := make([]*models.TableSql, 0)
+	tables := make([]*models.TableStruct, 0)
 	for rows.Next() {
-		table := new(models.TableSql)
+		table := new(models.TableStruct)
 		err := rows.Scan(
 			&table.ID,
 			&table.NumberOfSeats,
 			&table.IsReserved,
 			&table.TableNumber,
-			&table.RestaurantID,
+			&table.Restaurant.ID,
+			&table.Restaurant.Name,
+			&table.Restaurant.Address,
+			&table.Restaurant.Contact,
 		)
 		if err != nil {
 			return nil, err
@@ -191,8 +220,11 @@ func (r *TableRepo) GetAvailable(ctx context.Context, restid pgtype.UUID) ([]*mo
 	return tables, nil
 }
 
-func (r *TableRepo) GetReserved(ctx context.Context, restid pgtype.UUID) ([]*models.TableSql, error) {
-	query := `SELECT * FROM restables WHERE isreserved = true AND restaurantid = $1`
+func (r *TableRepo) GetReserved(ctx context.Context, restid pgtype.UUID) ([]*models.TableStruct, error) {
+	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
+from restables 
+join restaurants on restables.restaurantId = restaurants.id 
+where restables.restaurantid = $1 and restables.isreserved = true`
 
 	rows, err := r.db.Query(ctx, query, restid)
 	if err != nil {
@@ -201,15 +233,18 @@ func (r *TableRepo) GetReserved(ctx context.Context, restid pgtype.UUID) ([]*mod
 		}
 		return nil, err
 	}
-	tables := make([]*models.TableSql, 0)
+	tables := make([]*models.TableStruct, 0)
 	for rows.Next() {
-		table := new(models.TableSql)
+		table := new(models.TableStruct)
 		err := rows.Scan(
 			&table.ID,
 			&table.NumberOfSeats,
 			&table.IsReserved,
 			&table.TableNumber,
-			&table.RestaurantID,
+			&table.Restaurant.ID,
+			&table.Restaurant.Name,
+			&table.Restaurant.Address,
+			&table.Restaurant.Contact,
 		)
 		if err != nil {
 			return nil, err

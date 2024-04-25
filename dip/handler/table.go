@@ -7,16 +7,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// rewrited
 func (h *Handler) GetAllTables(c *gin.Context) {
-	res, err := h.service.Tables.GetAll(c.Request.Context())
+	tables, err := h.service.Tables.GetAll(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
 		c.Abort()
 		return
 	}
-	c.JSON(http.StatusOK, res)
+
+	c.JSON(http.StatusOK, tables)
 }
 
+// rewrited
 func (h *Handler) GetTablesByRestId(c *gin.Context) {
 	var getTableInp models.GetByIdInputSql
 	if err := c.BindJSON(&getTableInp); err != nil {
@@ -25,17 +28,18 @@ func (h *Handler) GetTablesByRestId(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.Tables.GetAllByRestaurantId(c.Request.Context(), getTableInp.ID)
+	tables, err := h.service.Tables.GetAllByRestaurantId(c.Request.Context(), getTableInp.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
 		c.Abort()
 		return
 	}
-	c.JSON(http.StatusOK, res)
+
+	c.JSON(http.StatusOK, tables)
 }
 
+// rewrited
 func (h *Handler) GetTable(c *gin.Context) {
-
 	var getTableInp models.GetByIdInputSql
 	if err := c.BindJSON(&getTableInp); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -43,13 +47,14 @@ func (h *Handler) GetTable(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.Tables.GetById(c.Request.Context(), getTableInp.ID)
+	table, err := h.service.Tables.GetById(c.Request.Context(), getTableInp.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
 		c.Abort()
 		return
 	}
-	c.JSON(http.StatusOK, res)
+
+	c.JSON(http.StatusOK, table)
 }
 
 func (h *Handler) AddTable(c *gin.Context) {
@@ -108,6 +113,7 @@ func (h *Handler) DeleteTableById(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"Table Deleted": nil})
 }
 
+// rewrited
 func (h *Handler) GetAvailableTables(c *gin.Context) {
 	var getTableInp models.GetByIdInputSql
 	if err := c.BindJSON(&getTableInp); err != nil {
@@ -116,15 +122,17 @@ func (h *Handler) GetAvailableTables(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.Tables.GetAvailable(c.Request.Context(), getTableInp.ID)
+	tables, err := h.service.Tables.GetAvailable(c.Request.Context(), getTableInp.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
 		c.Abort()
 		return
 	}
-	c.JSON(http.StatusOK, res)
+
+	c.JSON(http.StatusOK, tables)
 }
 
+// rewrited
 func (h *Handler) GetReservedTables(c *gin.Context) {
 	var getTableInp models.GetByIdInputSql
 	if err := c.BindJSON(&getTableInp); err != nil {
@@ -133,11 +141,12 @@ func (h *Handler) GetReservedTables(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.Tables.GetReserved(c.Request.Context(), getTableInp.ID)
+	tables, err := h.service.Tables.GetReserved(c.Request.Context(), getTableInp.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
 		c.Abort()
 		return
 	}
-	c.JSON(http.StatusOK, res)
+
+	c.JSON(http.StatusOK, tables)
 }

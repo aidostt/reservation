@@ -24,11 +24,11 @@ func (s *ReservationService) DeleteById(ctx context.Context, reservationId pgtyp
 	return s.repo.Delete(ctx, reservationId)
 }
 
-func (s *ReservationService) GetById(ctx context.Context, reservationId pgtype.UUID) (*models.ReservationSql, error) {
+func (s *ReservationService) GetById(ctx context.Context, reservationId pgtype.UUID) (*models.ReservationStruct, error) {
 	return s.repo.GetById(ctx, reservationId)
 }
 
-func (s *ReservationService) GetAllByUserId(ctx context.Context, userId pgtype.UUID) ([]*models.ReservationSql, error) {
+func (s *ReservationService) GetAllByUserId(ctx context.Context, userId pgtype.UUID) ([]*models.ReservationStruct, error) {
 	return s.repo.GetAllByUserId(ctx, userId)
 }
 
