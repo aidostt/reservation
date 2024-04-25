@@ -12,7 +12,7 @@ require (
 )
 
 require (
-	github.com/aidostt/protos v0.2.6 // indirect
+	github.com/aidostt/protos v0.3.1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect
 )
 

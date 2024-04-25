@@ -1,161 +1,205 @@
 package handler
 
 import (
-	"dip/models"
-	"net/http"
-
-	"github.com/gin-gonic/gin"
+	"context"
+	"dip/internal/logger"
+	"errors"
+	proto_reservation "github.com/aidostt/protos/gen/go/reservista/reservation"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-func (h *Handler) MakeReservation(c *gin.Context) {
-	var reservInp models.ReservationInputSql
-	if err := c.BindJSON(&reservInp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) MakeReservation(ctx context.Context, input *proto_reservation.ReservationSQLRequest) (*proto_reservation.StatusResponse, error) {
+	if input.UserID == "" {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "user id is required")
+	}
+	if input.TableID == "" {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "table id is required")
+	}
+	if input.ReservationTime == "" {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "reservation time is required")
 	}
 
-	reservation := models.ReservationSql{UserID: reservInp.UserID, TableID: reservInp.TableID,
-		ReservationTime: reservInp.ReservationTime}
-
-	err := h.service.Tables.MarkOccupied(c, reservInp.TableID)
+	err := h.service.Tables.MarkOccupied(ctx, input.GetTableID())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad request error": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+		}
+
 	}
 
-	if err = h.service.Reservations.Create(c.Request.Context(), &reservation); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"internal servar error": err.Error()})
-		c.Abort()
-		return
+	if err = h.service.Reservations.Create(ctx, input.GetUserID(), input.GetTableID(), input.GetReservationTime()); err != nil {
+		logger.Error(err)
+		switch {
+		default:
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+		}
 	}
-
-	c.JSON(http.StatusOK, gin.H{"status": "reservation made"})
-
+	return &proto_reservation.StatusResponse{Status: true}, nil
 }
 
-// rewrited
-func (h *Handler) GetReservation(c *gin.Context) {
-	var getReservInp models.GetByIdInputSql
-	if err := c.BindJSON(&getReservInp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) GetReservation(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.ReservationObject, error) {
+	if input.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	reservation, err := h.service.Reservations.GetById(c.Request.Context(), getReservInp.ID)
+	reservation, err := h.service.Reservations.GetById(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"not found": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		case errors.Is(err, errors.New("not found in db")):
+			return nil, status.Error(codes.NotFound, "user not found")
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
+
 	}
 
-	c.JSON(http.StatusOK, reservation)
+	return &proto_reservation.ReservationObject{
+		Id:     reservation.ID,
+		UserID: reservation.UserID,
+		Table: &proto_reservation.TableObject{
+			Id:            reservation.Table.ID,
+			NumberOfSeats: int32(reservation.Table.NumberOfSeats),
+			IsReserved:    reservation.Table.IsReserved,
+			TableNumber:   int32(reservation.Table.TableNumber),
+			Restaurant: &proto_reservation.RestaurantObject{
+				Id:      reservation.Table.Restaurant.ID,
+				Name:    reservation.Table.Restaurant.Name,
+				Address: reservation.Table.Restaurant.Address,
+				Contact: reservation.Table.Restaurant.Contact,
+			},
+		},
+		ReservationTime: reservation.ReservationTime,
+	}, nil
 }
 
-func (h *Handler) DeleteReservationById(c *gin.Context) {
-	var delReserv models.DeleteInputSql
-	if err := c.BindJSON(&delReserv); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) DeleteReservationById(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.StatusResponse, error) {
+	if input.Id == "" {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
+	}
+	reserv, err := h.service.Reservations.GetById(ctx, input.GetId())
+	if err != nil {
+		logger.Error(err)
+		switch {
+		default:
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	reserv, err := h.service.Reservations.GetById(c.Request.Context(), delReserv.DeleteId)
+	err = h.service.Reservations.DeleteById(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	err = h.service.Reservations.DeleteById(c.Request.Context(), delReserv.DeleteId)
+	err = h.service.Tables.MarkVacant(ctx, reserv.Table.ID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+		}
 	}
-
-	err = h.service.Tables.MarkVacant(c, reserv.Table.ID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad request error": err.Error()})
-		c.Abort()
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"Reservation Deleted": nil})
+	return &proto_reservation.StatusResponse{Status: true}, nil
 }
 
-// rewrited
-func (h *Handler) GetAllReservationByUserId(c *gin.Context) {
-	var allReserv models.GetAllInputSql
-	if err := c.BindJSON(&allReserv); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) GetAllReservationByUserId(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.ReservationListResponse, error) {
+	if input.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	reservations, err := h.service.Reservations.GetAllByUserId(c.Request.Context(), allReserv.UserId)
+	reservations, err := h.service.Reservations.GetAllByUserId(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	c.JSON(http.StatusOK, reservations)
+	return &proto_reservation.ReservationListResponse{
+		Reservations: reservations,
+	}, nil
 }
 
-// rewrite
-func (h *Handler) UpdateReservation(c *gin.Context) {
-	var upReservInp models.UpdateReservationInputSql
-	if err := c.BindJSON(&upReservInp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) UpdateReservation(ctx context.Context, input *proto_reservation.ReservationSQLRequest) (*proto_reservation.StatusResponse, error) {
+	if input.UserID == "" {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "user id is required")
+	}
+	if input.TableID == "" {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "table id is required")
+	}
+	if input.ReservationTime == "" {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "reservation time is required")
 	}
 
-	err := h.service.Reservations.Update(c.Request.Context(), &upReservInp)
+	err := h.service.Reservations.Update(ctx, input.GetUserID(), input.GetTableID(), input.GetReservationTime())
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"not found": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		case errors.Is(err, errors.New("not found in db")):
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.NotFound, "user not found")
+		default:
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+		}
+
 	}
 
-	c.JSON(http.StatusOK, gin.H{})
+	return &proto_reservation.StatusResponse{Status: true}, nil
 }
 
-func (h *Handler) GetRestaurantByReservationId(c *gin.Context) {
-	var idReserv models.GetByIdInputSql
-	if err := c.BindJSON(&idReserv); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) GetRestaurantByReservationId(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.RestaurantObject, error) {
+	if input.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	reserv, err := h.service.Reservations.GetById(c.Request.Context(), idReserv.ID)
+	reserv, err := h.service.Reservations.GetById(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	c.JSON(http.StatusOK, reserv.Table.Restaurant)
+	return &proto_reservation.RestaurantObject{
+		Id:      reserv.Table.Restaurant.ID,
+		Name:    reserv.Table.Restaurant.Name,
+		Address: reserv.Table.Restaurant.Address,
+		Contact: reserv.Table.Restaurant.Contact,
+	}, nil
 }
 
-// rewrited
-func (h *Handler) GetTableByReservationId(c *gin.Context) {
-	var idReserv models.GetByIdInputSql
-	if err := c.BindJSON(&idReserv); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) GetTableByReservationId(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.TableObject, error) {
+	if input.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	reserv, err := h.service.Reservations.GetById(c.Request.Context(), idReserv.ID)
+	reserv, err := h.service.Reservations.GetById(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	c.JSON(http.StatusOK, reserv.Table)
+	return &proto_reservation.TableObject{
+		Id:            reserv.Table.ID,
+		NumberOfSeats: int32(reserv.Table.NumberOfSeats),
+		IsReserved:    reserv.Table.IsReserved,
+		TableNumber:   int32(reserv.Table.TableNumber),
+		Restaurant: &proto_reservation.RestaurantObject{
+			Id:      reserv.Table.Restaurant.ID,
+			Name:    reserv.Table.Restaurant.Name,
+			Address: reserv.Table.Restaurant.Address,
+			Contact: reserv.Table.Restaurant.Contact,
+		},
+	}, nil
 }
