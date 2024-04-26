@@ -1,152 +1,267 @@
 package handler
 
 import (
+	"context"
+	"dip/internal/logger"
 	"dip/models"
-	"net/http"
-
-	"github.com/gin-gonic/gin"
+	"errors"
+	proto_table "github.com/aidostt/protos/gen/go/reservista/table"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-// rewrited
-func (h *Handler) GetAllTables(c *gin.Context) {
-	tables, err := h.service.Tables.GetAll(c.Request.Context())
+func (h *Handler) GetAllTables(ctx context.Context, input *proto_table.Empty) (*proto_table.TableListResponse, error) {
+	tables, err := h.service.Tables.GetAll(ctx)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
 	}
-
-	c.JSON(http.StatusOK, tables)
+	tablesResponse := make([]*proto_table.TableObject, len(tables))
+	for index, table := range tables {
+		tablesResponse[index] = &proto_table.TableObject{
+			Id:            table.ID.String(),
+			NumberOfSeats: int32(table.NumberOfSeats),
+			IsReserved:    table.IsReserved,
+			TableNumber:   int32(table.TableNumber),
+			Restaurant: &proto_table.RestaurantObject{
+				Id:      table.Restaurant.ID.String(),
+				Name:    table.Restaurant.Name,
+				Address: table.Restaurant.Address,
+				Contact: table.Restaurant.Contact,
+			},
+		}
+	}
+	return &proto_table.TableListResponse{
+		Tables: tablesResponse,
+	}, nil
 }
 
-// rewrited
-func (h *Handler) GetTablesByRestId(c *gin.Context) {
-	var getTableInp models.GetByIdInputSql
-	if err := c.BindJSON(&getTableInp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) GetTablesByRestId(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableListResponse, error) {
+	if input.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	tables, err := h.service.Tables.GetAllByRestaurantId(c.Request.Context(), getTableInp.ID)
+	tables, err := h.service.Tables.GetAllByRestaurantId(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		case errors.Is(err, errors.New("not found in db")):
+			return nil, status.Error(codes.NotFound, "table not found")
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
 	}
-
-	c.JSON(http.StatusOK, tables)
+	tablesResponse := make([]*proto_table.TableObject, len(tables))
+	for index, table := range tables {
+		tablesResponse[index] = &proto_table.TableObject{
+			Id:            table.ID.String(),
+			NumberOfSeats: int32(table.NumberOfSeats),
+			IsReserved:    table.IsReserved,
+			TableNumber:   int32(table.TableNumber),
+			Restaurant: &proto_table.RestaurantObject{
+				Id:      table.Restaurant.ID.String(),
+				Name:    table.Restaurant.Name,
+				Address: table.Restaurant.Address,
+				Contact: table.Restaurant.Contact,
+			},
+		}
+	}
+	return &proto_table.TableListResponse{
+		Tables: tablesResponse,
+	}, nil
 }
 
-// rewrited
-func (h *Handler) GetTable(c *gin.Context) {
-	var getTableInp models.GetByIdInputSql
-	if err := c.BindJSON(&getTableInp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) GetTable(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableObject, error) {
+	if input.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	table, err := h.service.Tables.GetById(c.Request.Context(), getTableInp.ID)
+	table, err := h.service.Tables.GetById(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		case errors.Is(err, errors.New("not found in db")):
+			return nil, status.Error(codes.NotFound, "table not found")
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	c.JSON(http.StatusOK, table)
+	return &proto_table.TableObject{
+		Id:            table.ID.String(),
+		NumberOfSeats: int32(table.NumberOfSeats),
+		IsReserved:    table.IsReserved,
+		TableNumber:   int32(table.TableNumber),
+		Restaurant: &proto_table.RestaurantObject{
+			Id:      table.Restaurant.ID.String(),
+			Name:    table.Restaurant.Name,
+			Address: table.Restaurant.Address,
+			Contact: table.Restaurant.Contact,
+		},
+	}, nil
 }
 
-func (h *Handler) AddTable(c *gin.Context) {
-	var tableInp models.TableInputSql
-	if err := c.BindJSON(&tableInp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) AddTable(ctx context.Context, input *proto_table.TableObject) (*proto_table.StatusResponse, error) {
+	if input.Id == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
+	}
+	if input.NumberOfSeats == 0 {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "number of seats is required")
+	}
+	if input.TableNumber == 0 {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "table number is required")
+	}
+	if input.Restaurant.Id == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant id is required")
+	}
+	if input.Restaurant.Name == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant name is required")
+	}
+	if input.Restaurant.Address == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant address is required")
+	}
+	if input.Restaurant.Contact == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant contact is required")
 	}
 
-	// table := models.TableSql{NumberOfSeats: tableInp.NumberOfSeats,
-	// 	IsReserved: false, RestaurantID: tableInp.RestaurantID}
-
-	if err := h.service.Tables.Create(c.Request.Context(), &tableInp); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"internal servar error": err.Error()})
-		c.Abort()
-		return
+	if err := h.service.Tables.Create(ctx, &models.TableInputSql{
+		NumberOfSeats: uint(input.GetNumberOfSeats()),
+		TableNumber:   uint(input.GetTableNumber()),
+		IsReserved:    input.GetIsReserved(),
+		RestaurantID:  input.Restaurant.GetId(),
+	}); err != nil {
+		logger.Error(err)
+		switch {
+		default:
+			return &proto_table.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "table made"})
+	return &proto_table.StatusResponse{Status: true}, nil
 }
 
-func (h *Handler) UpdateTableById(c *gin.Context) {
-	var upTable models.UpdateTableInputSql
-	if err := c.BindJSON(&upTable); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) UpdateTableById(ctx context.Context, input *proto_table.TableObject) (*proto_table.StatusResponse, error) {
+	if input.Id == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
 	}
-
-	err := h.service.Tables.UpdateById(c.Request.Context(), &upTable)
+	if input.NumberOfSeats == 0 {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "number of seats is required")
+	}
+	if input.TableNumber == 0 {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "table number is required")
+	}
+	if input.Restaurant.Id == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant id is required")
+	}
+	if input.Restaurant.Name == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant name is required")
+	}
+	if input.Restaurant.Address == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant address is required")
+	}
+	if input.Restaurant.Contact == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant contact is required")
+	}
+	err := h.service.Tables.UpdateById(ctx, &models.UpdateTableInputSql{
+		TableID:       input.GetId(),
+		NumberOfSeats: uint(input.GetNumberOfSeats()),
+		IsReserved:    input.GetIsReserved(),
+		TableNumber:   uint(input.GetTableNumber()),
+	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return &proto_table.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"updated table": nil})
+	return &proto_table.StatusResponse{Status: true}, nil
 }
 
-func (h *Handler) DeleteTableById(c *gin.Context) {
-	var delReserv models.DeleteInputSql
-	if err := c.BindJSON(&delReserv); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) DeleteTableById(ctx context.Context, input *proto_table.IDRequest) (*proto_table.StatusResponse, error) {
+	if input.Id == "" {
+		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	err := h.service.Tables.Delete(c.Request.Context(), delReserv.DeleteId)
+	err := h.service.Tables.Delete(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return &proto_table.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"Table Deleted": nil})
+	return &proto_table.StatusResponse{Status: true}, nil
 }
 
-// rewrited
-func (h *Handler) GetAvailableTables(c *gin.Context) {
-	var getTableInp models.GetByIdInputSql
-	if err := c.BindJSON(&getTableInp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) GetAvailableTables(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableListResponse, error) {
+	if input.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	tables, err := h.service.Tables.GetAvailable(c.Request.Context(), getTableInp.ID)
+	tables, err := h.service.Tables.GetAvailable(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
 	}
 
-	c.JSON(http.StatusOK, tables)
+	tablesResponse := make([]*proto_table.TableObject, len(tables))
+	for index, table := range tables {
+		tablesResponse[index] = &proto_table.TableObject{
+			Id:            table.ID.String(),
+			NumberOfSeats: int32(table.NumberOfSeats),
+			IsReserved:    table.IsReserved,
+			TableNumber:   int32(table.TableNumber),
+			Restaurant: &proto_table.RestaurantObject{
+				Id:      table.Restaurant.ID.String(),
+				Name:    table.Restaurant.Name,
+				Address: table.Restaurant.Address,
+				Contact: table.Restaurant.Contact,
+			},
+		}
+	}
+	return &proto_table.TableListResponse{
+		Tables: tablesResponse,
+	}, nil
 }
 
-// rewrited
-func (h *Handler) GetReservedTables(c *gin.Context) {
-	var getTableInp models.GetByIdInputSql
-	if err := c.BindJSON(&getTableInp); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		c.Abort()
-		return
+func (h *Handler) GetReservedTables(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableListResponse, error) {
+	if input.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	tables, err := h.service.Tables.GetReserved(c.Request.Context(), getTableInp.ID)
+	tables, err := h.service.Tables.GetReserved(ctx, input.GetId())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"bad reques": err.Error()})
-		c.Abort()
-		return
+		logger.Error(err)
+		switch {
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
 	}
-
-	c.JSON(http.StatusOK, tables)
+	tablesResponse := make([]*proto_table.TableObject, len(tables))
+	for index, table := range tables {
+		tablesResponse[index] = &proto_table.TableObject{
+			Id:            table.ID.String(),
+			NumberOfSeats: int32(table.NumberOfSeats),
+			IsReserved:    table.IsReserved,
+			TableNumber:   int32(table.TableNumber),
+			Restaurant: &proto_table.RestaurantObject{
+				Id:      table.Restaurant.ID.String(),
+				Name:    table.Restaurant.Name,
+				Address: table.Restaurant.Address,
+				Contact: table.Restaurant.Contact,
+			},
+		}
+	}
+	return &proto_table.TableListResponse{
+		Tables: tablesResponse,
+	}, nil
 }

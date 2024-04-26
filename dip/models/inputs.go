@@ -35,10 +35,10 @@ type UpdateTableInputSql struct {
 }
 
 type TableInputSql struct {
-	NumberOfSeats uint      `json:"numberOfSeats"`
-	IsReserved    bool      `json:"isReserved"`
-	TableNumber   uint      `json:"tableNumber"`
-	RestaurantID  uuid.UUID `json:"restaurantId"`
+	NumberOfSeats uint   `json:"numberOfSeats"`
+	IsReserved    bool   `json:"isReserved"`
+	TableNumber   uint   `json:"tableNumber"`
+	RestaurantID  string `json:"restaurantId"`
 }
 type RestaurantInputSql struct {
 	Name    string `json:"name"`

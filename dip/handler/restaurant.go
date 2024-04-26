@@ -58,9 +58,6 @@ func (h *Handler) GetRestaurant(ctx context.Context, input *proto_restaurant.IDR
 }
 
 func (h *Handler) AddRestaurant(ctx context.Context, input *proto_restaurant.RestaurantObject) (*proto_restaurant.StatusResponse, error) {
-	if input.Id == "" {
-		return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
-	}
 	if input.Name == "" {
 		return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "name is required")
 	}

@@ -31,11 +31,15 @@ func (s *TableService) GetAll(ctx context.Context) ([]*models.TableStruct, error
 }
 
 func (s *TableService) Create(ctx context.Context, res *models.TableInputSql) error {
-
+	newRestaurantID, err := uuid.FromString(res.RestaurantID)
+	if err != nil {
+		return err
+	}
 	newTable := models.TableSql{
 		NumberOfSeats: res.NumberOfSeats,
 		TableNumber:   res.TableNumber,
 		IsReserved:    res.IsReserved,
+		RestaurantID:  newRestaurantID,
 	}
 	return s.repo.Create(ctx, &newTable)
 }
