@@ -104,34 +104,23 @@ func (h *Handler) GetTable(ctx context.Context, input *proto_table.IDRequest) (*
 	}, nil
 }
 
-func (h *Handler) AddTable(ctx context.Context, input *proto_table.TableObject) (*proto_table.StatusResponse, error) {
-	if input.Id == "" {
-		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
-	}
+func (h *Handler) AddTable(ctx context.Context, input *proto_table.AddTableRequest) (*proto_table.StatusResponse, error) {
+
 	if input.NumberOfSeats == 0 {
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "number of seats is required")
 	}
 	if input.TableNumber == 0 {
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "table number is required")
 	}
-	if input.Restaurant.Id == "" {
+	if input.RestaurantID == "" {
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant id is required")
-	}
-	if input.Restaurant.Name == "" {
-		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant name is required")
-	}
-	if input.Restaurant.Address == "" {
-		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant address is required")
-	}
-	if input.Restaurant.Contact == "" {
-		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant contact is required")
 	}
 
 	if err := h.service.Tables.Create(ctx, &models.TableInputSql{
 		NumberOfSeats: uint(input.GetNumberOfSeats()),
 		TableNumber:   uint(input.GetTableNumber()),
 		IsReserved:    input.GetIsReserved(),
-		RestaurantID:  input.Restaurant.GetId(),
+		RestaurantID:  input.GetRestaurantID(),
 	}); err != nil {
 		logger.Error(err)
 		switch {
@@ -143,7 +132,7 @@ func (h *Handler) AddTable(ctx context.Context, input *proto_table.TableObject) 
 	return &proto_table.StatusResponse{Status: true}, nil
 }
 
-func (h *Handler) UpdateTableById(ctx context.Context, input *proto_table.TableObject) (*proto_table.StatusResponse, error) {
+func (h *Handler) UpdateTableById(ctx context.Context, input *proto_table.UpdateTableRequest) (*proto_table.StatusResponse, error) {
 	if input.Id == "" {
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
 	}
@@ -152,18 +141,6 @@ func (h *Handler) UpdateTableById(ctx context.Context, input *proto_table.TableO
 	}
 	if input.TableNumber == 0 {
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "table number is required")
-	}
-	if input.Restaurant.Id == "" {
-		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant id is required")
-	}
-	if input.Restaurant.Name == "" {
-		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant name is required")
-	}
-	if input.Restaurant.Address == "" {
-		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant address is required")
-	}
-	if input.Restaurant.Contact == "" {
-		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant contact is required")
 	}
 	err := h.service.Tables.UpdateById(ctx, &models.UpdateTableInputSql{
 		TableID:       input.GetId(),

@@ -55,7 +55,7 @@ func (r *ReservationRepo) Delete(ctx context.Context, reservationId uuid.UUID) e
 
 func (r *ReservationRepo) GetById(ctx context.Context, resId uuid.UUID) (*models.ReservationStruct, error) {
 	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
-restables.isreserved, restables.tablenumber,  restaurants.* 
+restables.isreserved, restables.tablenumber,  restaurants.*, reservations.reservationtime
 from reservations 
 join restables on reservations.tableid = restables.id 
 join restaurants on restables.restaurantid = restaurants.id 
@@ -86,7 +86,7 @@ where reservations.id = $1`
 
 func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId uuid.UUID) ([]*models.ReservationStruct, error) {
 	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
-restables.isreserved, restables.tablenumber,  restaurants.* 
+restables.isreserved, restables.tablenumber,  restaurants.* , reservations.reservationtime
 from reservations 
 join restables on reservations.tableid = restables.id 
 join restaurants on restables.restaurantid = restaurants.id 
