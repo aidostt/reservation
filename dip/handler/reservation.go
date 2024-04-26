@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"dip/internal/logger"
+	"dip/models"
 	"errors"
 
 	proto_reservation "github.com/aidostt/protos/gen/go/reservista/reservation"
@@ -30,8 +31,11 @@ func (h *Handler) MakeReservation(ctx context.Context, input *proto_reservation.
 		}
 
 	}
-
-	if err = h.service.Reservations.Create(ctx, input.GetUserID(), input.GetTableID(), input.GetReservationTime()); err != nil {
+	if err = h.service.Reservations.Create(ctx, &models.ReservationInputSql{
+		UserID:          input.GetUserID(),
+		TableID:         input.GetTableID(),
+		ReservationTime: input.GetReservationTime(),
+	}); err != nil {
 		logger.Error(err)
 		switch {
 		default:
@@ -161,7 +165,11 @@ func (h *Handler) UpdateReservation(ctx context.Context, input *proto_reservatio
 		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "reservation time is required")
 	}
 
-	err := h.service.Reservations.Update(ctx, input.GetUserID(), input.GetTableID(), input.GetReservationTime())
+	err := h.service.Reservations.Update(ctx, &models.UpdateReservationInputSql{
+		ReservationID:   input.GetUserID(),
+		TableID:         input.GetTableID(),
+		ReservationTime: input.GetReservationTime(),
+	})
 	if err != nil {
 		logger.Error(err)
 		switch {
