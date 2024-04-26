@@ -36,7 +36,7 @@ type ReservationSql struct {
 
 type ReservationStruct struct {
 	ID              uuid.UUID `json:"id"`
-	UserID          uuid.UUID `json:"userId"`
+	UserID          string    `json:"userId"`
 	Table           TableStruct
 	ReservationTime string `json:"reservationTime"`
 }

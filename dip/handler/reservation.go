@@ -64,7 +64,7 @@ func (h *Handler) GetReservation(ctx context.Context, input *proto_reservation.I
 
 	return &proto_reservation.ReservationObject{
 		Id:     reservation.ID.String(),
-		UserID: reservation.UserID.String(),
+		UserID: reservation.UserID,
 		Table: &proto_reservation.TableObject{
 			Id:            reservation.Table.ID.String(),
 			NumberOfSeats: int32(reservation.Table.NumberOfSeats),
@@ -132,7 +132,7 @@ func (h *Handler) GetAllReservationByUserId(ctx context.Context, input *proto_re
 	for i, res := range reservations {
 		reservResp[i] = &proto_reservation.ReservationObject{
 			Id:     res.ID.String(),
-			UserID: res.UserID.String(),
+			UserID: res.UserID,
 			Table: &proto_reservation.TableObject{
 				Id:            res.Table.ID.String(),
 				NumberOfSeats: int32(res.Table.NumberOfSeats),
