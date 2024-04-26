@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -43,7 +43,7 @@ func (r *ReservationRepo) Create(ctx context.Context, reservation *models.Reserv
 	return nil
 }
 
-func (r *ReservationRepo) Delete(ctx context.Context, reservationId pgtype.UUID) error {
+func (r *ReservationRepo) Delete(ctx context.Context, reservationId uuid.UUID) error {
 	query := `DELETE FROM reservations WHERE id = $1`
 
 	_, err := r.db.Exec(ctx, query, reservationId)
@@ -53,7 +53,7 @@ func (r *ReservationRepo) Delete(ctx context.Context, reservationId pgtype.UUID)
 	return nil
 }
 
-func (r *ReservationRepo) GetById(ctx context.Context, resId pgtype.UUID) (*models.ReservationStruct, error) {
+func (r *ReservationRepo) GetById(ctx context.Context, resId uuid.UUID) (*models.ReservationStruct, error) {
 	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
 restables.isreserved, restables.tablenumber,  restaurants.* 
 from reservations 
@@ -84,7 +84,7 @@ where reservations.id = $1`
 	return &reservation, nil
 }
 
-func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId pgtype.UUID) ([]*models.ReservationStruct, error) {
+func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId uuid.UUID) ([]*models.ReservationStruct, error) {
 	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
 restables.isreserved, restables.tablenumber,  restaurants.* 
 from reservations 
@@ -119,6 +119,7 @@ where reservations.userId = $1`
 			return nil, err
 		}
 		reservations = append(reservations, reservation)
+
 	}
 
 	if err = rows.Err(); err != nil {
@@ -128,14 +129,14 @@ where reservations.userId = $1`
 	return reservations, nil
 }
 
-func (r *ReservationRepo) Update(ctx context.Context, upReserv *models.UpdateReservationInputSql) error {
+func (r *ReservationRepo) Update(ctx context.Context, upReserv *models.ReservationSql) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	query := "UPDATE reservations SET tableid = $1, reservationtime = $2 WHERE id = $3"
-	_, err = tx.Exec(ctx, query, upReserv.TableNumber, upReserv.ReservationTime, upReserv.ReservationID)
+	_, err = tx.Exec(ctx, query, upReserv.TableID, upReserv.ReservationTime, upReserv.ID)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err

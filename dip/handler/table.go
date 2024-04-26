@@ -65,10 +65,10 @@ func (h *Handler) AddTable(c *gin.Context) {
 		return
 	}
 
-	table := models.TableSql{NumberOfSeats: tableInp.NumberOfSeats,
-		IsReserved: false, RestaurantID: tableInp.RestaurantID}
+	// table := models.TableSql{NumberOfSeats: tableInp.NumberOfSeats,
+	// 	IsReserved: false, RestaurantID: tableInp.RestaurantID}
 
-	if err := h.service.Tables.Create(c.Request.Context(), &table); err != nil {
+	if err := h.service.Tables.Create(c.Request.Context(), &tableInp); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"internal servar error": err.Error()})
 		c.Abort()
 		return

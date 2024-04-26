@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -22,7 +22,7 @@ func NewRestaurantRepo(db *pgxpool.Pool) *TableRepo {
 	}
 }
 
-func (r *TableRepo) GetById(ctx context.Context, id pgtype.UUID) (*models.TableStruct, error) {
+func (r *TableRepo) GetById(ctx context.Context, id uuid.UUID) (*models.TableStruct, error) {
 	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
 from restables 
 join restaurants on restables.restaurantId = restaurants.id 
@@ -116,14 +116,14 @@ func (r *TableRepo) SetStatusById(ctx context.Context, upTable *models.StatusTab
 	return tx.Commit(ctx)
 }
 
-func (r *TableRepo) UpdateById(ctx context.Context, upTable *models.UpdateTableInputSql) error {
+func (r *TableRepo) UpdateById(ctx context.Context, upTable *models.TableSql) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	query := "UPDATE restables SET numberofseats = $1, isreserved = $2, tablenumber = $3  WHERE id = $4"
-	_, err = tx.Exec(ctx, query, upTable.NumberOfSeats, upTable.IsReserved, upTable.TableNumber, upTable.TableID)
+	_, err = tx.Exec(ctx, query, upTable.NumberOfSeats, upTable.IsReserved, upTable.TableNumber, upTable.ID)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err
@@ -132,7 +132,7 @@ func (r *TableRepo) UpdateById(ctx context.Context, upTable *models.UpdateTableI
 	return tx.Commit(ctx)
 }
 
-func (r *TableRepo) GetAllByRestaurantId(ctx context.Context, restId pgtype.UUID) ([]*models.TableStruct, error) {
+func (r *TableRepo) GetAllByRestaurantId(ctx context.Context, restId uuid.UUID) ([]*models.TableStruct, error) {
 	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
 from restables 
 join restaurants on restables.restaurantId = restaurants.id 
@@ -171,7 +171,7 @@ where restables.restaurantid = $1`
 	return tables, nil
 }
 
-func (r *TableRepo) Delete(ctx context.Context, tableId pgtype.UUID) error {
+func (r *TableRepo) Delete(ctx context.Context, tableId uuid.UUID) error {
 	query := `DELETE FROM restables WHERE id = $1`
 
 	_, err := r.db.Exec(ctx, query, tableId)
@@ -181,7 +181,7 @@ func (r *TableRepo) Delete(ctx context.Context, tableId pgtype.UUID) error {
 	return nil
 }
 
-func (r *TableRepo) GetAvailable(ctx context.Context, restid pgtype.UUID) ([]*models.TableStruct, error) {
+func (r *TableRepo) GetAvailable(ctx context.Context, restid uuid.UUID) ([]*models.TableStruct, error) {
 	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
 from restables 
 join restaurants on restables.restaurantId = restaurants.id 
@@ -220,7 +220,7 @@ where restables.restaurantid = $1 and restables.isreserved = false`
 	return tables, nil
 }
 
-func (r *TableRepo) GetReserved(ctx context.Context, restid pgtype.UUID) ([]*models.TableStruct, error) {
+func (r *TableRepo) GetReserved(ctx context.Context, restid uuid.UUID) ([]*models.TableStruct, error) {
 	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
 from restables 
 join restaurants on restables.restaurantId = restaurants.id 

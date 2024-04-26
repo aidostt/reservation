@@ -4,6 +4,7 @@ import (
 	"context"
 	"dip/internal/logger"
 	"errors"
+
 	proto_reservation "github.com/aidostt/protos/gen/go/reservista/reservation"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -58,15 +59,15 @@ func (h *Handler) GetReservation(ctx context.Context, input *proto_reservation.I
 	}
 
 	return &proto_reservation.ReservationObject{
-		Id:     reservation.ID,
-		UserID: reservation.UserID,
+		Id:     reservation.ID.String(),
+		UserID: reservation.UserID.String(),
 		Table: &proto_reservation.TableObject{
-			Id:            reservation.Table.ID,
+			Id:            reservation.Table.ID.String(),
 			NumberOfSeats: int32(reservation.Table.NumberOfSeats),
 			IsReserved:    reservation.Table.IsReserved,
 			TableNumber:   int32(reservation.Table.TableNumber),
 			Restaurant: &proto_reservation.RestaurantObject{
-				Id:      reservation.Table.Restaurant.ID,
+				Id:      reservation.Table.Restaurant.ID.String(),
 				Name:    reservation.Table.Restaurant.Name,
 				Address: reservation.Table.Restaurant.Address,
 				Contact: reservation.Table.Restaurant.Contact,
@@ -98,7 +99,7 @@ func (h *Handler) DeleteReservationById(ctx context.Context, input *proto_reserv
 		}
 	}
 
-	err = h.service.Tables.MarkVacant(ctx, reserv.Table.ID)
+	err = h.service.Tables.MarkVacant(ctx, reserv.Table.ID.String())
 	if err != nil {
 		logger.Error(err)
 		switch {
@@ -123,8 +124,29 @@ func (h *Handler) GetAllReservationByUserId(ctx context.Context, input *proto_re
 		}
 	}
 
+	reservResp := make([]*proto_reservation.ReservationObject, len(reservations))
+	for i, res := range reservations {
+		reservResp[i] = &proto_reservation.ReservationObject{
+			Id:     res.ID.String(),
+			UserID: res.UserID.String(),
+			Table: &proto_reservation.TableObject{
+				Id:            res.Table.ID.String(),
+				NumberOfSeats: int32(res.Table.NumberOfSeats),
+				IsReserved:    res.Table.IsReserved,
+				TableNumber:   int32(res.Table.TableNumber),
+				Restaurant: &proto_reservation.RestaurantObject{
+					Id:      res.Table.Restaurant.ID.String(),
+					Name:    res.Table.Restaurant.Name,
+					Address: res.Table.Restaurant.Address,
+					Contact: res.Table.Restaurant.Contact,
+				},
+			},
+			ReservationTime: res.ReservationTime,
+		}
+	}
+
 	return &proto_reservation.ReservationListResponse{
-		Reservations: reservations,
+		Reservations: reservResp,
 	}, nil
 }
 
@@ -169,7 +191,7 @@ func (h *Handler) GetRestaurantByReservationId(ctx context.Context, input *proto
 	}
 
 	return &proto_reservation.RestaurantObject{
-		Id:      reserv.Table.Restaurant.ID,
+		Id:      reserv.Table.Restaurant.ID.String(),
 		Name:    reserv.Table.Restaurant.Name,
 		Address: reserv.Table.Restaurant.Address,
 		Contact: reserv.Table.Restaurant.Contact,
@@ -191,12 +213,12 @@ func (h *Handler) GetTableByReservationId(ctx context.Context, input *proto_rese
 	}
 
 	return &proto_reservation.TableObject{
-		Id:            reserv.Table.ID,
+		Id:            reserv.Table.ID.String(),
 		NumberOfSeats: int32(reserv.Table.NumberOfSeats),
 		IsReserved:    reserv.Table.IsReserved,
 		TableNumber:   int32(reserv.Table.TableNumber),
 		Restaurant: &proto_reservation.RestaurantObject{
-			Id:      reserv.Table.Restaurant.ID,
+			Id:      reserv.Table.Restaurant.ID.String(),
 			Name:    reserv.Table.Restaurant.Name,
 			Address: reserv.Table.Restaurant.Address,
 			Contact: reserv.Table.Restaurant.Contact,

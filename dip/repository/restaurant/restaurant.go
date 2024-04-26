@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,7 +23,7 @@ func NewRestaurantRepo(db *pgxpool.Pool) *RestaurantRepo {
 	}
 }
 
-func (r *RestaurantRepo) GetById(ctx context.Context, id pgtype.UUID) (*models.RestaurantSql, error) {
+func (r *RestaurantRepo) GetById(ctx context.Context, id uuid.UUID) (*models.RestaurantSql, error) {
 	query := `SELECT * FROM restaurants WHERE id = $1`
 	var table models.RestaurantSql
 	err := r.db.QueryRow(ctx, query, id).Scan(
@@ -83,7 +83,7 @@ func (r *RestaurantRepo) Create(ctx context.Context, rest *models.RestaurantSql)
 	return nil
 }
 
-func (r *RestaurantRepo) Delete(ctx context.Context, restId pgtype.UUID) error {
+func (r *RestaurantRepo) Delete(ctx context.Context, restId uuid.UUID) error {
 	query := `DELETE FROM restaurants WHERE id = $1`
 
 	_, err := r.db.Exec(ctx, query, restId)
@@ -93,14 +93,14 @@ func (r *RestaurantRepo) Delete(ctx context.Context, restId pgtype.UUID) error {
 	return nil
 }
 
-func (r *RestaurantRepo) UpdateById(ctx context.Context, upRest *models.UpdateRestaurantInputSql) error {
+func (r *RestaurantRepo) UpdateById(ctx context.Context, upRest *models.RestaurantSql) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
 	query := "UPDATE restaurants SET name = $1, address = $2, contact = $3 WHERE id = $4"
-	_, err = tx.Exec(ctx, query, upRest.Name, upRest.Address, upRest.Contact, upRest.RestaurantId)
+	_, err = tx.Exec(ctx, query, upRest.Name, upRest.Address, upRest.Contact, upRest.ID)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err
