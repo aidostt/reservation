@@ -42,11 +42,7 @@ func (s *ReservationService) GetById(ctx context.Context, reservationId string) 
 }
 
 func (s *ReservationService) GetAllByUserId(ctx context.Context, userId string) ([]*models.ReservationStruct, error) {
-	newUserId, err := uuid.FromString(userId)
-	if err != nil {
-		return nil, err
-	}
-	return s.repo.GetAllByUserId(ctx, newUserId)
+	return s.repo.GetAllByUserId(ctx, userId)
 }
 
 func (s *ReservationService) Update(ctx context.Context, upReserv *models.UpdateReservationInputSql) error {

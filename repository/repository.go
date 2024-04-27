@@ -34,7 +34,7 @@ type Tables interface {
 type Reservations interface {
 	Create(ctx context.Context, reserv *models.ReservationSql) error // models.createReservation
 	GetById(ctx context.Context, resId uuid.UUID) (*models.ReservationStruct, error)
-	GetAllByUserId(ctx context.Context, userId uuid.UUID) ([]*models.ReservationStruct, error)
+	GetAllByUserId(ctx context.Context, userId string) ([]*models.ReservationStruct, error)
 	Update(ctx context.Context, upReserv *models.ReservationSql) error
 	Delete(ctx context.Context, resId uuid.UUID) error
 }

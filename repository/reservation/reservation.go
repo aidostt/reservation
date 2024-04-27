@@ -84,7 +84,7 @@ where reservations.id = $1`
 	return &reservation, nil
 }
 
-func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId uuid.UUID) ([]*models.ReservationStruct, error) {
+func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId string) ([]*models.ReservationStruct, error) {
 	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
 restables.isreserved, restables.tablenumber,  restaurants.* , reservations.reservationtime
 from reservations 
