@@ -2,10 +2,9 @@ package table
 
 import (
 	"context"
-	"dip/models"
+	"dip/domain"
 	repo "dip/repository"
-	"fmt"
-
+	"errors"
 	"github.com/gofrs/uuid"
 )
 
@@ -17,7 +16,7 @@ func NewTableService(repo repo.Tables) *TableService {
 	return &TableService{repo: repo}
 }
 
-func (s *TableService) GetById(ctx context.Context, id string) (*models.TableStruct, error) {
+func (s *TableService) GetById(ctx context.Context, id string) (*domain.TableStruct, error) {
 	newTableId, err := uuid.FromString(id)
 	if err != nil {
 		return nil, err
@@ -26,16 +25,16 @@ func (s *TableService) GetById(ctx context.Context, id string) (*models.TableStr
 	return s.repo.GetById(ctx, newTableId)
 }
 
-func (s *TableService) GetAll(ctx context.Context) ([]*models.TableStruct, error) {
+func (s *TableService) GetAll(ctx context.Context) ([]*domain.TableStruct, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s *TableService) Create(ctx context.Context, res *models.TableInputSql) error {
+func (s *TableService) Create(ctx context.Context, res *domain.TableInputSql) error {
 	newRestaurantID, err := uuid.FromString(res.RestaurantID)
 	if err != nil {
 		return err
 	}
-	newTable := models.TableSql{
+	newTable := domain.TableSql{
 		NumberOfSeats: res.NumberOfSeats,
 		TableNumber:   res.TableNumber,
 		IsReserved:    res.IsReserved,
@@ -44,13 +43,12 @@ func (s *TableService) Create(ctx context.Context, res *models.TableInputSql) er
 	return s.repo.Create(ctx, &newTable)
 }
 
-func (s *TableService) UpdateById(ctx context.Context, upTable *models.UpdateTableInputSql) error {
+func (s *TableService) UpdateById(ctx context.Context, upTable *domain.UpdateTableInputSql) error {
 	newTableId, err := uuid.FromString(upTable.TableID)
 	if err != nil {
 		return err
 	}
-	// (ctx, query, upTable.NumberOfSeats, upTable.IsReserved, upTable.TableNumber, upTable.TableID)
-	newTable := models.TableSql{
+	newTable := domain.TableSql{
 		ID:            newTableId,
 		NumberOfSeats: upTable.NumberOfSeats,
 		TableNumber:   upTable.TableNumber,
@@ -67,14 +65,16 @@ func (s *TableService) MarkOccupied(ctx context.Context, tableId string) error {
 
 	table, err := s.repo.GetById(ctx, newTableId)
 	if err != nil {
-		return fmt.Errorf("markOccupied %v, %v", err, table)
+		switch {
+		case errors.Is(err, domain.ErrNotFoundInDB):
+			return domain.ErrNotFoundInDB
+		case table.IsReserved:
+			return domain.ErrTableOccupied
+		default:
+			return err
+		}
 	}
-
-	if table.IsReserved {
-		return fmt.Errorf("bad request is reserved occupied")
-	}
-
-	return s.repo.SetStatusById(ctx, &models.StatusTableInputSql{TableID: table.ID, IsReserved: true})
+	return s.repo.SetStatusById(ctx, &domain.StatusTableInputSql{TableID: table.ID, IsReserved: true})
 }
 
 func (s *TableService) MarkVacant(ctx context.Context, tableId string) error {
@@ -85,14 +85,17 @@ func (s *TableService) MarkVacant(ctx context.Context, tableId string) error {
 
 	table, err := s.repo.GetById(ctx, newTableId)
 	if err != nil {
-		return fmt.Errorf("markVacant %v, %v", err, table)
+		switch {
+		case errors.Is(err, domain.ErrNotFoundInDB):
+			return domain.ErrNotFoundInDB
+		case table.IsReserved:
+			return domain.ErrTableOccupied
+		default:
+			return err
+		}
 	}
 
-	if !table.IsReserved {
-		return fmt.Errorf("bad request is reserved not occupied")
-	}
-
-	return s.repo.SetStatusById(ctx, &models.StatusTableInputSql{TableID: table.ID, IsReserved: false})
+	return s.repo.SetStatusById(ctx, &domain.StatusTableInputSql{TableID: table.ID, IsReserved: false})
 }
 
 func (s *TableService) Delete(ctx context.Context, tableId string) error {
@@ -104,7 +107,7 @@ func (s *TableService) Delete(ctx context.Context, tableId string) error {
 	return s.repo.Delete(ctx, newTableId)
 }
 
-func (s *TableService) GetReserved(ctx context.Context, restid string) ([]*models.TableStruct, error) {
+func (s *TableService) GetReserved(ctx context.Context, restid string) ([]*domain.TableStruct, error) {
 	newTableId, err := uuid.FromString(restid)
 	if err != nil {
 		return nil, err
@@ -113,7 +116,7 @@ func (s *TableService) GetReserved(ctx context.Context, restid string) ([]*model
 	return s.repo.GetReserved(ctx, newTableId)
 }
 
-func (s *TableService) GetAvailable(ctx context.Context, restid string) ([]*models.TableStruct, error) {
+func (s *TableService) GetAvailable(ctx context.Context, restid string) ([]*domain.TableStruct, error) {
 	newTableId, err := uuid.FromString(restid)
 	if err != nil {
 		return nil, err
@@ -121,7 +124,7 @@ func (s *TableService) GetAvailable(ctx context.Context, restid string) ([]*mode
 	return s.repo.GetAvailable(ctx, newTableId)
 }
 
-func (s *TableService) GetAllByRestaurantId(ctx context.Context, restid string) ([]*models.TableStruct, error) {
+func (s *TableService) GetAllByRestaurantId(ctx context.Context, restid string) ([]*domain.TableStruct, error) {
 	newTableId, err := uuid.FromString(restid)
 	if err != nil {
 		return nil, err

@@ -2,8 +2,8 @@ package handler
 
 import (
 	"context"
+	"dip/domain"
 	"dip/internal/logger"
-	"dip/models"
 	"errors"
 	proto_table "github.com/aidostt/protos/gen/go/reservista/table"
 	"google.golang.org/grpc/codes"
@@ -16,7 +16,7 @@ func (h *Handler) GetAllTables(ctx context.Context, input *proto_table.Empty) (*
 		logger.Error(err)
 		switch {
 		default:
-			return nil, status.Error(codes.Internal, "internal error")
+			return nil, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 	tablesResponse := make([]*proto_table.TableObject, len(tables))
@@ -40,7 +40,7 @@ func (h *Handler) GetAllTables(ctx context.Context, input *proto_table.Empty) (*
 }
 
 func (h *Handler) GetTablesByRestId(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableListResponse, error) {
-	if input.Id == "" {
+	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
@@ -48,10 +48,10 @@ func (h *Handler) GetTablesByRestId(ctx context.Context, input *proto_table.IDRe
 	if err != nil {
 		logger.Error(err)
 		switch {
-		case errors.Is(err, errors.New("not found in db")):
+		case errors.Is(err, domain.ErrNotFoundInDB):
 			return nil, status.Error(codes.NotFound, "table not found")
 		default:
-			return nil, status.Error(codes.Internal, "internal error")
+			return nil, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 	tablesResponse := make([]*proto_table.TableObject, len(tables))
@@ -75,7 +75,7 @@ func (h *Handler) GetTablesByRestId(ctx context.Context, input *proto_table.IDRe
 }
 
 func (h *Handler) GetTable(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableObject, error) {
-	if input.Id == "" {
+	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
@@ -83,10 +83,10 @@ func (h *Handler) GetTable(ctx context.Context, input *proto_table.IDRequest) (*
 	if err != nil {
 		logger.Error(err)
 		switch {
-		case errors.Is(err, errors.New("not found in db")):
+		case errors.Is(err, domain.ErrNotFoundInDB):
 			return nil, status.Error(codes.NotFound, "table not found")
 		default:
-			return nil, status.Error(codes.Internal, "internal error")
+			return nil, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 
@@ -116,7 +116,7 @@ func (h *Handler) AddTable(ctx context.Context, input *proto_table.AddTableReque
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "restaurant id is required")
 	}
 
-	if err := h.service.Tables.Create(ctx, &models.TableInputSql{
+	if err := h.service.Tables.Create(ctx, &domain.TableInputSql{
 		NumberOfSeats: uint(input.GetNumberOfSeats()),
 		TableNumber:   uint(input.GetTableNumber()),
 		IsReserved:    input.GetIsReserved(),
@@ -125,7 +125,7 @@ func (h *Handler) AddTable(ctx context.Context, input *proto_table.AddTableReque
 		logger.Error(err)
 		switch {
 		default:
-			return &proto_table.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+			return &proto_table.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 
@@ -133,16 +133,16 @@ func (h *Handler) AddTable(ctx context.Context, input *proto_table.AddTableReque
 }
 
 func (h *Handler) UpdateTableById(ctx context.Context, input *proto_table.UpdateTableRequest) (*proto_table.StatusResponse, error) {
-	if input.Id == "" {
+	if input.GetId() == "" {
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
 	}
-	if input.NumberOfSeats == 0 {
+	if input.GetNumberOfSeats() == 0 {
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "number of seats is required")
 	}
-	if input.TableNumber == 0 {
+	if input.GetTableNumber() == 0 {
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "table number is required")
 	}
-	err := h.service.Tables.UpdateById(ctx, &models.UpdateTableInputSql{
+	err := h.service.Tables.UpdateById(ctx, &domain.UpdateTableInputSql{
 		TableID:       input.GetId(),
 		NumberOfSeats: uint(input.GetNumberOfSeats()),
 		IsReserved:    input.GetIsReserved(),
@@ -152,7 +152,7 @@ func (h *Handler) UpdateTableById(ctx context.Context, input *proto_table.Update
 		logger.Error(err)
 		switch {
 		default:
-			return &proto_table.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+			return &proto_table.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 
@@ -160,7 +160,7 @@ func (h *Handler) UpdateTableById(ctx context.Context, input *proto_table.Update
 }
 
 func (h *Handler) DeleteTableById(ctx context.Context, input *proto_table.IDRequest) (*proto_table.StatusResponse, error) {
-	if input.Id == "" {
+	if input.GetId() == "" {
 		return &proto_table.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
 	}
 
@@ -177,7 +177,7 @@ func (h *Handler) DeleteTableById(ctx context.Context, input *proto_table.IDRequ
 }
 
 func (h *Handler) GetAvailableTables(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableListResponse, error) {
-	if input.Id == "" {
+	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
@@ -185,8 +185,10 @@ func (h *Handler) GetAvailableTables(ctx context.Context, input *proto_table.IDR
 	if err != nil {
 		logger.Error(err)
 		switch {
+		case errors.Is(err, domain.ErrNotFoundInDB):
+			return nil, status.Error(codes.InvalidArgument, domain.ErrNotFoundInDB.Error())
 		default:
-			return nil, status.Error(codes.Internal, "internal error")
+			return nil, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 
@@ -211,7 +213,7 @@ func (h *Handler) GetAvailableTables(ctx context.Context, input *proto_table.IDR
 }
 
 func (h *Handler) GetReservedTables(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableListResponse, error) {
-	if input.Id == "" {
+	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
@@ -219,8 +221,10 @@ func (h *Handler) GetReservedTables(ctx context.Context, input *proto_table.IDRe
 	if err != nil {
 		logger.Error(err)
 		switch {
+		case errors.Is(err, domain.ErrNotFoundInDB):
+			return nil, status.Error(codes.InvalidArgument, domain.ErrNotFoundInDB.Error())
 		default:
-			return nil, status.Error(codes.Internal, "internal error")
+			return nil, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 	tablesResponse := make([]*proto_table.TableObject, len(tables))

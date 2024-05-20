@@ -2,8 +2,8 @@ package handler
 
 import (
 	"context"
+	"dip/domain"
 	"dip/internal/logger"
-	"dip/models"
 	"errors"
 	proto_restaurant "github.com/aidostt/protos/gen/go/reservista/restaurant"
 	"google.golang.org/grpc/codes"
@@ -16,7 +16,7 @@ func (h *Handler) GetAllRestaurants(ctx context.Context, input *proto_restaurant
 		logger.Error(err)
 		switch {
 		default:
-			return nil, status.Error(codes.Internal, "internal error")
+			return nil, status.Error(codes.Internal, "internal error: "+err.Error())
 		}
 	}
 	restaurantResponse := make([]*proto_restaurant.RestaurantObject, len(restaurants))
@@ -34,7 +34,7 @@ func (h *Handler) GetAllRestaurants(ctx context.Context, input *proto_restaurant
 }
 
 func (h *Handler) GetRestaurant(ctx context.Context, input *proto_restaurant.IDRequest) (*proto_restaurant.RestaurantObject, error) {
-	if input.Id == "" {
+	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
@@ -42,10 +42,10 @@ func (h *Handler) GetRestaurant(ctx context.Context, input *proto_restaurant.IDR
 	if err != nil {
 		logger.Error(err)
 		switch {
-		case errors.Is(err, errors.New("not found in db")):
+		case errors.Is(err, domain.ErrNotFoundInDB):
 			return nil, status.Error(codes.NotFound, "user not found")
 		default:
-			return nil, status.Error(codes.Internal, "internal error")
+			return nil, status.Error(codes.Internal, "internal error"+err.Error())
 		}
 
 	}
@@ -58,17 +58,17 @@ func (h *Handler) GetRestaurant(ctx context.Context, input *proto_restaurant.IDR
 }
 
 func (h *Handler) AddRestaurant(ctx context.Context, input *proto_restaurant.RestaurantObject) (*proto_restaurant.StatusResponse, error) {
-	if input.Name == "" {
+	if input.GetName() == "" {
 		return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "name is required")
 	}
-	if input.Address == "" {
+	if input.GetAddress() == "" {
 		return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "address is required")
 	}
-	if input.Contact == "" {
+	if input.GetContact() == "" {
 		return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "contact is required")
 	}
 
-	table := models.RestaurantSql{
+	table := domain.RestaurantSql{
 		Name:    input.GetName(),
 		Address: input.GetAddress(),
 		Contact: input.GetContact(),
@@ -77,7 +77,7 @@ func (h *Handler) AddRestaurant(ctx context.Context, input *proto_restaurant.Res
 		logger.Error(err)
 		switch {
 		default:
-			return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+			return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 
@@ -85,7 +85,7 @@ func (h *Handler) AddRestaurant(ctx context.Context, input *proto_restaurant.Res
 }
 
 func (h *Handler) DeleteRestaurantById(ctx context.Context, input *proto_restaurant.IDRequest) (*proto_restaurant.StatusResponse, error) {
-	if input.Id == "" {
+	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
@@ -94,7 +94,7 @@ func (h *Handler) DeleteRestaurantById(ctx context.Context, input *proto_restaur
 		logger.Error(err)
 		switch {
 		default:
-			return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+			return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 
@@ -102,20 +102,20 @@ func (h *Handler) DeleteRestaurantById(ctx context.Context, input *proto_restaur
 }
 
 func (h *Handler) UpdateRestById(ctx context.Context, input *proto_restaurant.RestaurantObject) (*proto_restaurant.StatusResponse, error) {
-	if input.Id == "" {
+	if input.GetId() == "" {
 		return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
 	}
-	if input.Name == "" {
+	if input.GetName() == "" {
 		return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "name is required")
 	}
-	if input.Address == "" {
+	if input.GetAddress() == "" {
 		return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "address is required")
 	}
-	if input.Contact == "" {
+	if input.GetContact() == "" {
 		return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "contact is required")
 	}
 
-	err := h.service.Restaurants.UpdateById(ctx, &models.UpdateRestaurantInputSql{
+	err := h.service.Restaurants.UpdateById(ctx, &domain.UpdateRestaurantInputSql{
 		RestaurantId: input.GetId(),
 		Name:         input.GetName(),
 		Contact:      input.GetContact(),
@@ -125,7 +125,7 @@ func (h *Handler) UpdateRestById(ctx context.Context, input *proto_restaurant.Re
 		logger.Error(err)
 		switch {
 		default:
-			return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+			return &proto_restaurant.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error "+err.Error())
 		}
 	}
 

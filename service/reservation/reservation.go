@@ -2,7 +2,7 @@ package reservation
 
 import (
 	"context"
-	"dip/models"
+	"dip/domain"
 	repo "dip/repository"
 	"github.com/gofrs/uuid"
 )
@@ -15,8 +15,8 @@ func NewreservationService(repo repo.Reservations) *ReservationService {
 	return &ReservationService{repo: repo}
 }
 
-func (s *ReservationService) Create(ctx context.Context, reservation *models.ReservationInputSql) error {
-	newReservation := models.ReservationSql{
+func (s *ReservationService) Create(ctx context.Context, reservation *domain.ReservationInputSql) error {
+	newReservation := domain.ReservationSql{
 		UserID:          reservation.UserID,
 		TableID:         reservation.TableID,
 		ReservationTime: reservation.ReservationTime,
@@ -33,7 +33,7 @@ func (s *ReservationService) DeleteById(ctx context.Context, reservationId strin
 	return s.repo.Delete(ctx, newReservId)
 }
 
-func (s *ReservationService) GetById(ctx context.Context, reservationId string) (*models.ReservationStruct, error) {
+func (s *ReservationService) GetById(ctx context.Context, reservationId string) (*domain.ReservationStruct, error) {
 	newReservId, err := uuid.FromString(reservationId)
 	if err != nil {
 		return nil, err
@@ -41,12 +41,12 @@ func (s *ReservationService) GetById(ctx context.Context, reservationId string) 
 	return s.repo.GetById(ctx, newReservId)
 }
 
-func (s *ReservationService) GetAllByUserId(ctx context.Context, userId string) ([]*models.ReservationStruct, error) {
+func (s *ReservationService) GetAllByUserId(ctx context.Context, userId string) ([]*domain.ReservationStruct, error) {
 	return s.repo.GetAllByUserId(ctx, userId)
 }
 
-func (s *ReservationService) Update(ctx context.Context, upReserv *models.UpdateReservationInputSql) error {
-	newReservation := models.ReservationSql{
+func (s *ReservationService) Update(ctx context.Context, upReserv *domain.UpdateReservationInputSql) error {
+	newReservation := domain.ReservationSql{
 		ID:              upReserv.ReservationID,
 		TableID:         upReserv.TableID,
 		ReservationTime: upReserv.ReservationTime,

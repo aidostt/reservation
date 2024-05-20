@@ -2,13 +2,9 @@ package restaurant
 
 import (
 	"context"
-	"dip/models"
+	"dip/domain"
 	"errors"
-	"fmt"
-
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
-
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -23,9 +19,9 @@ func NewRestaurantRepo(db *pgxpool.Pool) *RestaurantRepo {
 	}
 }
 
-func (r *RestaurantRepo) GetById(ctx context.Context, id uuid.UUID) (*models.RestaurantSql, error) {
+func (r *RestaurantRepo) GetById(ctx context.Context, id uuid.UUID) (*domain.RestaurantSql, error) {
 	query := `SELECT * FROM restaurants WHERE id = $1`
-	var table models.RestaurantSql
+	var table domain.RestaurantSql
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&table.ID,
 		&table.Name,
@@ -34,7 +30,7 @@ func (r *RestaurantRepo) GetById(ctx context.Context, id uuid.UUID) (*models.Res
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("not found in db")
+			return nil, domain.ErrNotFoundInDB
 		}
 		return nil, err
 	}
@@ -42,15 +38,15 @@ func (r *RestaurantRepo) GetById(ctx context.Context, id uuid.UUID) (*models.Res
 	return &table, nil
 }
 
-func (r *RestaurantRepo) GetAll(ctx context.Context) ([]*models.RestaurantSql, error) {
+func (r *RestaurantRepo) GetAll(ctx context.Context) ([]*domain.RestaurantSql, error) {
 	query := "SELECT * FROM restaurants"
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	restaurants := make([]*models.RestaurantSql, 0)
+	restaurants := make([]*domain.RestaurantSql, 0)
 	for rows.Next() {
-		restaurant := new(models.RestaurantSql)
+		restaurant := new(domain.RestaurantSql)
 		err := rows.Scan(&restaurant.ID, &restaurant.Name, &restaurant.Address, &restaurant.Contact)
 		if err != nil {
 			return nil, err
@@ -65,7 +61,7 @@ func (r *RestaurantRepo) GetAll(ctx context.Context) ([]*models.RestaurantSql, e
 	return restaurants, nil
 }
 
-func (r *RestaurantRepo) Create(ctx context.Context, rest *models.RestaurantSql) error {
+func (r *RestaurantRepo) Create(ctx context.Context, rest *domain.RestaurantSql) error {
 	query := `
 	INSERT INTO restaurants (name, address, contact) VALUES ($1, $2, $3)
 	RETURNING id;
@@ -74,10 +70,6 @@ func (r *RestaurantRepo) Create(ctx context.Context, rest *models.RestaurantSql)
 
 	err := r.db.QueryRow(ctx, query, args...).Scan(&rest.ID)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			return err
-		}
 		return err
 	}
 	return nil
@@ -93,7 +85,7 @@ func (r *RestaurantRepo) Delete(ctx context.Context, restId uuid.UUID) error {
 	return nil
 }
 
-func (r *RestaurantRepo) UpdateById(ctx context.Context, upRest *models.RestaurantSql) error {
+func (r *RestaurantRepo) UpdateById(ctx context.Context, upRest *domain.RestaurantSql) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err

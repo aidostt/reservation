@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"dip/models"
+	"dip/domain"
 	"dip/repository/reservation"
 	"dip/repository/restaurant"
 	"dip/repository/table"
@@ -12,30 +12,30 @@ import (
 )
 
 type Restaurants interface {
-	GetById(ctx context.Context, id uuid.UUID) (*models.RestaurantSql, error)
-	GetAll(ctx context.Context) ([]*models.RestaurantSql, error)
-	Create(ctx context.Context, res *models.RestaurantSql) error
+	GetById(ctx context.Context, id uuid.UUID) (*domain.RestaurantSql, error)
+	GetAll(ctx context.Context) ([]*domain.RestaurantSql, error)
+	Create(ctx context.Context, res *domain.RestaurantSql) error
 	Delete(ctx context.Context, restId uuid.UUID) error
-	UpdateById(ctx context.Context, upTable *models.RestaurantSql) error
+	UpdateById(ctx context.Context, upTable *domain.RestaurantSql) error
 }
 
 type Tables interface {
-	GetById(ctx context.Context, id uuid.UUID) (*models.TableStruct, error)
-	GetAll(ctx context.Context) ([]*models.TableStruct, error)
-	Create(ctx context.Context, res *models.TableSql) error
-	UpdateById(ctx context.Context, upTable *models.TableSql) error
-	SetStatusById(ctx context.Context, upTable *models.StatusTableInputSql) error
+	GetById(ctx context.Context, id uuid.UUID) (*domain.TableStruct, error)
+	GetAll(ctx context.Context) ([]*domain.TableStruct, error)
+	Create(ctx context.Context, res *domain.TableSql) error
+	UpdateById(ctx context.Context, upTable *domain.TableSql) error
+	SetStatusById(ctx context.Context, upTable *domain.StatusTableInputSql) error
 	Delete(ctx context.Context, tableId uuid.UUID) error
-	GetReserved(ctx context.Context, restid uuid.UUID) ([]*models.TableStruct, error)
-	GetAvailable(ctx context.Context, restid uuid.UUID) ([]*models.TableStruct, error)
-	GetAllByRestaurantId(ctx context.Context, restId uuid.UUID) ([]*models.TableStruct, error)
+	GetReserved(ctx context.Context, restid uuid.UUID) ([]*domain.TableStruct, error)
+	GetAvailable(ctx context.Context, restid uuid.UUID) ([]*domain.TableStruct, error)
+	GetAllByRestaurantId(ctx context.Context, restId uuid.UUID) ([]*domain.TableStruct, error)
 }
 
 type Reservations interface {
-	Create(ctx context.Context, reserv *models.ReservationSql) error // models.createReservation
-	GetById(ctx context.Context, resId uuid.UUID) (*models.ReservationStruct, error)
-	GetAllByUserId(ctx context.Context, userId string) ([]*models.ReservationStruct, error)
-	Update(ctx context.Context, upReserv *models.ReservationSql) error
+	Create(ctx context.Context, reserv *domain.ReservationSql) error // domain.createReservation
+	GetById(ctx context.Context, resId uuid.UUID) (*domain.ReservationStruct, error)
+	GetAllByUserId(ctx context.Context, userId string) ([]*domain.ReservationStruct, error)
+	Update(ctx context.Context, upReserv *domain.ReservationSql) error
 	Delete(ctx context.Context, resId uuid.UUID) error
 }
 

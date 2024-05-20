@@ -2,7 +2,7 @@ package restaurant
 
 import (
 	"context"
-	"dip/models"
+	"dip/domain"
 	repo "dip/repository"
 
 	"github.com/gofrs/uuid"
@@ -16,7 +16,7 @@ func NewRestaurantService(repo repo.Restaurants) *RestaurantService {
 	return &RestaurantService{repo: repo}
 }
 
-func (s *RestaurantService) GetById(ctx context.Context, id string) (*models.RestaurantSql, error) {
+func (s *RestaurantService) GetById(ctx context.Context, id string) (*domain.RestaurantSql, error) {
 	newTableId, err := uuid.FromString(id)
 	if err != nil {
 		return nil, err
@@ -25,11 +25,11 @@ func (s *RestaurantService) GetById(ctx context.Context, id string) (*models.Res
 	return s.repo.GetById(ctx, newTableId)
 }
 
-func (s *RestaurantService) GetAll(ctx context.Context) ([]*models.RestaurantSql, error) {
+func (s *RestaurantService) GetAll(ctx context.Context) ([]*domain.RestaurantSql, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s *RestaurantService) Create(ctx context.Context, res *models.RestaurantSql) error {
+func (s *RestaurantService) Create(ctx context.Context, res *domain.RestaurantSql) error {
 	return s.repo.Create(ctx, res)
 }
 
@@ -41,13 +41,13 @@ func (s *RestaurantService) DeleteById(ctx context.Context, restId string) error
 	return s.repo.Delete(ctx, newTableId)
 }
 
-func (s *RestaurantService) UpdateById(ctx context.Context, upRest *models.UpdateRestaurantInputSql) error {
+func (s *RestaurantService) UpdateById(ctx context.Context, upRest *domain.UpdateRestaurantInputSql) error {
 	newRestId, err := uuid.FromString(upRest.RestaurantId)
 	if err != nil {
 		return err
 	}
 
-	newRestaurant := models.RestaurantSql{
+	newRestaurant := domain.RestaurantSql{
 		ID:      newRestId,
 		Name:    upRest.Name,
 		Address: upRest.Address,

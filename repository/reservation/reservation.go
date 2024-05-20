@@ -2,9 +2,8 @@ package reservation
 
 import (
 	"context"
-	"dip/models"
+	"dip/domain"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/gofrs/uuid"
@@ -23,7 +22,7 @@ func NewReservationRepo(db *pgxpool.Pool) *ReservationRepo {
 	}
 }
 
-func (r *ReservationRepo) Create(ctx context.Context, reservation *models.ReservationSql) error {
+func (r *ReservationRepo) Create(ctx context.Context, reservation *domain.ReservationSql) error {
 	query := `
 	INSERT INTO reservations (userid, tableid, reservationtime) VALUES ($1, $2, $3)
 	RETURNING id;
@@ -35,7 +34,7 @@ func (r *ReservationRepo) Create(ctx context.Context, reservation *models.Reserv
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if strings.Contains(pgErr.ConstraintName, "reservationTime") {
-				return fmt.Errorf("duplicate reservation time")
+				return domain.ErrDuplicateKeyErr
 			}
 		}
 		return err
@@ -53,14 +52,14 @@ func (r *ReservationRepo) Delete(ctx context.Context, reservationId uuid.UUID) e
 	return nil
 }
 
-func (r *ReservationRepo) GetById(ctx context.Context, resId uuid.UUID) (*models.ReservationStruct, error) {
+func (r *ReservationRepo) GetById(ctx context.Context, resId uuid.UUID) (*domain.ReservationStruct, error) {
 	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
 restables.isreserved, restables.tablenumber,  restaurants.*, reservations.reservationtime
 from reservations 
 join restables on reservations.tableid = restables.id 
 join restaurants on restables.restaurantid = restaurants.id 
 where reservations.id = $1`
-	var reservation models.ReservationStruct
+	var reservation domain.ReservationStruct
 	err := r.db.QueryRow(ctx, query, resId).Scan(
 		&reservation.ID,
 		&reservation.UserID,
@@ -76,7 +75,7 @@ where reservations.id = $1`
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("not found in db")
+			return nil, domain.ErrNotFoundInDB
 		}
 		return nil, err
 	}
@@ -84,7 +83,7 @@ where reservations.id = $1`
 	return &reservation, nil
 }
 
-func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId string) ([]*models.ReservationStruct, error) {
+func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId string) ([]*domain.ReservationStruct, error) {
 	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
 restables.isreserved, restables.tablenumber,  restaurants.* , reservations.reservationtime
 from reservations 
@@ -95,13 +94,13 @@ where reservations.userId = $1`
 	rows, err := r.db.Query(ctx, query, userId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("not found in db")
+			return nil, domain.ErrNotFoundInDB
 		}
 		return nil, err
 	}
-	reservations := make([]*models.ReservationStruct, 0)
+	reservations := make([]*domain.ReservationStruct, 0)
 	for rows.Next() {
-		reservation := new(models.ReservationStruct)
+		reservation := new(domain.ReservationStruct)
 		err := rows.Scan(
 			&reservation.ID,
 			&reservation.UserID,
@@ -129,7 +128,7 @@ where reservations.userId = $1`
 	return reservations, nil
 }
 
-func (r *ReservationRepo) Update(ctx context.Context, upReserv *models.ReservationSql) error {
+func (r *ReservationRepo) Update(ctx context.Context, upReserv *domain.ReservationSql) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err

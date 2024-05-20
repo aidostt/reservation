@@ -2,10 +2,8 @@ package table
 
 import (
 	"context"
-	"dip/models"
+	"dip/domain"
 	"errors"
-	"fmt"
-
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -22,12 +20,12 @@ func NewRestaurantRepo(db *pgxpool.Pool) *TableRepo {
 	}
 }
 
-func (r *TableRepo) GetById(ctx context.Context, id uuid.UUID) (*models.TableStruct, error) {
+func (r *TableRepo) GetById(ctx context.Context, id uuid.UUID) (*domain.TableStruct, error) {
 	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
 from restables 
 join restaurants on restables.restaurantId = restaurants.id 
 where restables.id = $1`
-	var table models.TableStruct
+	var table domain.TableStruct
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&table.ID,
 		&table.NumberOfSeats,
@@ -40,7 +38,7 @@ where restables.id = $1`
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("not found in db")
+			return nil, domain.ErrNotFoundInDB
 		}
 		return nil, err
 	}
@@ -48,7 +46,7 @@ where restables.id = $1`
 	return &table, nil
 }
 
-func (r *TableRepo) GetAll(ctx context.Context) ([]*models.TableStruct, error) {
+func (r *TableRepo) GetAll(ctx context.Context) ([]*domain.TableStruct, error) {
 	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
 from restables 
 join restaurants on restables.restaurantId = restaurants.id`
@@ -56,9 +54,9 @@ join restaurants on restables.restaurantId = restaurants.id`
 	if err != nil {
 		return nil, err
 	}
-	tables := make([]*models.TableStruct, 0)
+	tables := make([]*domain.TableStruct, 0)
 	for rows.Next() {
-		table := new(models.TableStruct)
+		table := new(domain.TableStruct)
 		err := rows.Scan(
 			&table.ID,
 			&table.NumberOfSeats,
@@ -82,7 +80,7 @@ join restaurants on restables.restaurantId = restaurants.id`
 	return tables, nil
 }
 
-func (r *TableRepo) Create(ctx context.Context, table *models.TableSql) error {
+func (r *TableRepo) Create(ctx context.Context, table *domain.TableSql) error {
 	query := `
 	INSERT INTO restables (numberofseats, isreserved, tablenumber, restaurantid) VALUES ($1, $2, $3, $4)
 	RETURNING id;
@@ -100,7 +98,7 @@ func (r *TableRepo) Create(ctx context.Context, table *models.TableSql) error {
 	return nil
 }
 
-func (r *TableRepo) SetStatusById(ctx context.Context, upTable *models.StatusTableInputSql) error {
+func (r *TableRepo) SetStatusById(ctx context.Context, upTable *domain.StatusTableInputSql) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -116,7 +114,7 @@ func (r *TableRepo) SetStatusById(ctx context.Context, upTable *models.StatusTab
 	return tx.Commit(ctx)
 }
 
-func (r *TableRepo) UpdateById(ctx context.Context, upTable *models.TableSql) error {
+func (r *TableRepo) UpdateById(ctx context.Context, upTable *domain.TableSql) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -132,7 +130,7 @@ func (r *TableRepo) UpdateById(ctx context.Context, upTable *models.TableSql) er
 	return tx.Commit(ctx)
 }
 
-func (r *TableRepo) GetAllByRestaurantId(ctx context.Context, restId uuid.UUID) ([]*models.TableStruct, error) {
+func (r *TableRepo) GetAllByRestaurantId(ctx context.Context, restId uuid.UUID) ([]*domain.TableStruct, error) {
 	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
 from restables 
 join restaurants on restables.restaurantId = restaurants.id 
@@ -141,13 +139,13 @@ where restables.restaurantid = $1`
 	rows, err := r.db.Query(ctx, query, restId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("not found in db")
+			return nil, domain.ErrNotFoundInDB
 		}
 		return nil, err
 	}
-	tables := make([]*models.TableStruct, 0)
+	tables := make([]*domain.TableStruct, 0)
 	for rows.Next() {
-		table := new(models.TableStruct)
+		table := new(domain.TableStruct)
 		err := rows.Scan(
 			&table.ID,
 			&table.NumberOfSeats,
@@ -181,7 +179,7 @@ func (r *TableRepo) Delete(ctx context.Context, tableId uuid.UUID) error {
 	return nil
 }
 
-func (r *TableRepo) GetAvailable(ctx context.Context, restid uuid.UUID) ([]*models.TableStruct, error) {
+func (r *TableRepo) GetAvailable(ctx context.Context, restid uuid.UUID) ([]*domain.TableStruct, error) {
 	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
 from restables 
 join restaurants on restables.restaurantId = restaurants.id 
@@ -190,13 +188,13 @@ where restables.restaurantid = $1 and restables.isreserved = false`
 	rows, err := r.db.Query(ctx, query, restid)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("not found in db")
+			return nil, domain.ErrNotFoundInDB
 		}
 		return nil, err
 	}
-	tables := make([]*models.TableStruct, 0)
+	tables := make([]*domain.TableStruct, 0)
 	for rows.Next() {
-		table := new(models.TableStruct)
+		table := new(domain.TableStruct)
 		err := rows.Scan(
 			&table.ID,
 			&table.NumberOfSeats,
@@ -220,7 +218,7 @@ where restables.restaurantid = $1 and restables.isreserved = false`
 	return tables, nil
 }
 
-func (r *TableRepo) GetReserved(ctx context.Context, restid uuid.UUID) ([]*models.TableStruct, error) {
+func (r *TableRepo) GetReserved(ctx context.Context, restid uuid.UUID) ([]*domain.TableStruct, error) {
 	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
 from restables 
 join restaurants on restables.restaurantId = restaurants.id 
@@ -229,13 +227,13 @@ where restables.restaurantid = $1 and restables.isreserved = true`
 	rows, err := r.db.Query(ctx, query, restid)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("not found in db")
+			return nil, domain.ErrNotFoundInDB
 		}
 		return nil, err
 	}
-	tables := make([]*models.TableStruct, 0)
+	tables := make([]*domain.TableStruct, 0)
 	for rows.Next() {
-		table := new(models.TableStruct)
+		table := new(domain.TableStruct)
 		err := rows.Scan(
 			&table.ID,
 			&table.NumberOfSeats,
