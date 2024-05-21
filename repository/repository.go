@@ -35,6 +35,7 @@ type Reservations interface {
 	Create(ctx context.Context, reserv *domain.ReservationSql) error // domain.createReservation
 	GetById(ctx context.Context, resId uuid.UUID) (*domain.ReservationStruct, error)
 	GetAllByUserId(ctx context.Context, userId string) ([]*domain.ReservationStruct, error)
+	GetAllByRestaurantId(ctx context.Context, reservationId string) ([]*domain.ReservationStruct, error)
 	Update(ctx context.Context, upReserv *domain.ReservationSql) error
 	Delete(ctx context.Context, resId uuid.UUID) error
 }

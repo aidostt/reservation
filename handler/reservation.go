@@ -243,3 +243,45 @@ func (h *Handler) GetTableByReservationId(ctx context.Context, input *proto_rese
 		},
 	}, nil
 }
+
+func (h *Handler) GetAllReservationByRestaurantId(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.ReservationListResponse, error) {
+	if input.GetId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+
+	reservations, err := h.service.Reservations.GetAllByRestaurantId(ctx, input.GetId())
+	if err != nil {
+		logger.Error(err)
+		switch {
+		case errors.Is(err, domain.ErrNotFoundInDB):
+			return nil, status.Error(codes.InvalidArgument, domain.ErrNotFoundInDB.Error())
+		default:
+			return nil, status.Error(codes.Internal, "internal error: "+err.Error())
+		}
+	}
+
+	reservResp := make([]*proto_reservation.ReservationObject, len(reservations))
+	for i, res := range reservations {
+		reservResp[i] = &proto_reservation.ReservationObject{
+			Id:     res.ID.String(),
+			UserID: res.UserID,
+			Table: &proto_reservation.TableObject{
+				Id:            res.Table.ID.String(),
+				NumberOfSeats: int32(res.Table.NumberOfSeats),
+				IsReserved:    res.Table.IsReserved,
+				TableNumber:   int32(res.Table.TableNumber),
+				Restaurant: &proto_reservation.RestaurantObject{
+					Id:      res.Table.Restaurant.ID.String(),
+					Name:    res.Table.Restaurant.Name,
+					Address: res.Table.Restaurant.Address,
+					Contact: res.Table.Restaurant.Contact,
+				},
+			},
+			ReservationTime: res.ReservationTime,
+		}
+	}
+
+	return &proto_reservation.ReservationListResponse{
+		Reservations: reservResp,
+	}, nil
+}

@@ -24,9 +24,9 @@ func NewReservationRepo(db *pgxpool.Pool) *ReservationRepo {
 
 func (r *ReservationRepo) Create(ctx context.Context, reservation *domain.ReservationSql) error {
 	query := `
-	INSERT INTO reservations (userid, tableid, reservationtime) VALUES ($1, $2, $3)
-	RETURNING id;
-	`
+	INSERT INTO reservations (userid, tableid, reservationtime, reservationdate) 
+VALUES ($1, $2, $3, CURRENT_DATE)
+RETURNING id;`
 	args := []any{reservation.UserID, reservation.TableID, reservation.ReservationTime}
 
 	err := r.db.QueryRow(ctx, query, args...).Scan(&reservation.ID)
@@ -134,7 +134,7 @@ func (r *ReservationRepo) Update(ctx context.Context, upReserv *domain.Reservati
 		return err
 	}
 
-	query := "UPDATE reservations SET tableid = $1, reservationtime = $2 WHERE id = $3"
+	query := "UPDATE reservations SET tableid = $1, reservationtime = $2, reservationdate = CURRENT_DATE WHERE id = $3"
 	_, err = tx.Exec(ctx, query, upReserv.TableID, upReserv.ReservationTime, upReserv.ID)
 	if err != nil {
 		tx.Rollback(ctx)
@@ -142,4 +142,49 @@ func (r *ReservationRepo) Update(ctx context.Context, upReserv *domain.Reservati
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (r *ReservationRepo) GetAllByRestaurantId(ctx context.Context, restaurantId string) ([]*domain.ReservationStruct, error) {
+	query := `SELECT reservations.id, reservations.userid, restables.id, restables.numberofseats,
+       restables.isreserved, restables.tablenumber, restaurants.*, reservations.reservationtime
+FROM reservations 
+JOIN restables ON reservations.tableid = restables.id 
+JOIN restaurants ON restables.restaurantid = restaurants.id 
+WHERE restaurants.id = $1 AND reservations.reservationdate = CURRENT_DATE`
+
+	rows, err := r.db.Query(ctx, query, restaurantId)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFoundInDB
+		}
+		return nil, err
+	}
+	reservations := make([]*domain.ReservationStruct, 0)
+	for rows.Next() {
+		reservation := new(domain.ReservationStruct)
+		err := rows.Scan(
+			&reservation.ID,
+			&reservation.UserID,
+			&reservation.Table.ID,
+			&reservation.Table.NumberOfSeats,
+			&reservation.Table.IsReserved,
+			&reservation.Table.TableNumber,
+			&reservation.Table.Restaurant.ID,
+			&reservation.Table.Restaurant.Name,
+			&reservation.Table.Restaurant.Address,
+			&reservation.Table.Restaurant.Contact,
+			&reservation.ReservationTime,
+		)
+		if err != nil {
+			return nil, err
+		}
+		reservations = append(reservations, reservation)
+
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return reservations, nil
 }

@@ -45,6 +45,10 @@ func (s *ReservationService) GetAllByUserId(ctx context.Context, userId string) 
 	return s.repo.GetAllByUserId(ctx, userId)
 }
 
+func (s *ReservationService) GetAllByRestaurantId(ctx context.Context, restaurantId string) ([]*domain.ReservationStruct, error) {
+	return s.repo.GetAllByRestaurantId(ctx, restaurantId)
+}
+
 func (s *ReservationService) Update(ctx context.Context, upReserv *domain.UpdateReservationInputSql) error {
 	newReservation := domain.ReservationSql{
 		ID:              upReserv.ReservationID,

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/ac7a5c4b-4f72-478d-8f30-b44f3bef9455/console.sql" dialect="SQLite" />
     <file url="file://$PROJECT_DIR$/repository/table/table.go" dialect="GenericSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
