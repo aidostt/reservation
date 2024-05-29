@@ -42,7 +42,6 @@ where restables.id = $1`
 		}
 		return nil, err
 	}
-
 	return &table, nil
 }
 

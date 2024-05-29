@@ -5,5 +5,6 @@ CREATE TABLE IF NOT EXISTS reservations (
     userid          TEXT NOT NULL,
     tableid         UUID NOT NULL REFERENCES restables ON DELETE CASCADE,
     reservationtime TEXT,
-    reservationdate DATE
+    reservationdate DATE,
+    confirmed       BOOLEAN
     );

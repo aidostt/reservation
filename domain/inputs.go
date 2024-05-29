@@ -6,16 +6,18 @@ type GetByIdInputSql struct {
 	ID uuid.UUID `json:"id"`
 }
 
-type UpdateReservationInputSql struct {
-	ReservationID   string `json:"reservationId"`
-	TableID         string `json:"tableId"`
-	ReservationTime string `json:"reservationTime"`
-}
-
 type ReservationInputSql struct {
 	UserID          string `json:"userId"`
 	TableID         string `json:"tableId"`
 	ReservationTime string `json:"reservationTime"`
+	Confirmed       bool   `json:"confirmed"`
+}
+
+type UpdateReservationInputSql struct {
+	ReservationID   string `json:"reservationId"`
+	TableID         string `json:"tableId"`
+	ReservationTime string `json:"reservationTime"`
+	Confirmed       bool   `json:"confirmed"`
 }
 
 type DeleteInputSql struct {

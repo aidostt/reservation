@@ -5,44 +5,48 @@ import (
 	"dip/domain"
 	"dip/internal/logger"
 	"errors"
-
 	proto_reservation "github.com/aidostt/protos/gen/go/reservista/reservation"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func (h *Handler) MakeReservation(ctx context.Context, input *proto_reservation.ReservationSQLRequest) (*proto_reservation.StatusResponse, error) {
+func (h *Handler) MakeReservation(ctx context.Context, input *proto_reservation.ReservationSQLRequest) (*proto_reservation.IDRequest, error) {
 	if input.GetUserID() == "" {
-		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "user id is required")
+		return nil, status.Error(codes.InvalidArgument, "user id is required")
 	}
 	if input.GetTableID() == "" {
-		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "table id is required")
+		return nil, status.Error(codes.InvalidArgument, "table id is required")
 	}
 	if input.GetReservationTime() == "" {
-		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "reservation time is required")
+		return nil, status.Error(codes.InvalidArgument, "reservation time is required")
 	}
-
 	err := h.service.Tables.MarkOccupied(ctx, input.GetTableID())
 	if err != nil {
 		logger.Error(err)
 		switch {
+		case errors.Is(err, domain.ErrTableOccupied):
+			return nil, status.Error(codes.InvalidArgument, "table is already occupied")
+		case errors.Is(err, domain.ErrNotFoundInDB):
+			return nil, status.Error(codes.InvalidArgument, "invalid table id")
 		default:
-			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+			return nil, status.Error(codes.Internal, "internal error")
 		}
 
 	}
-	if err = h.service.Reservations.Create(ctx, &domain.ReservationInputSql{
+	id, err := h.service.Reservations.Create(ctx, &domain.ReservationInputSql{
 		UserID:          input.GetUserID(),
 		TableID:         input.GetTableID(),
 		ReservationTime: input.GetReservationTime(),
-	}); err != nil {
+		Confirmed:       false,
+	})
+	if err != nil {
 		logger.Error(err)
 		switch {
 		default:
-			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+			return nil, status.Error(codes.Internal, "internal error")
 		}
 	}
-	return &proto_reservation.StatusResponse{Status: true}, nil
+	return &proto_reservation.IDRequest{Id: id}, nil
 }
 
 func (h *Handler) GetReservation(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.ReservationObject, error) {
@@ -78,6 +82,7 @@ func (h *Handler) GetReservation(ctx context.Context, input *proto_reservation.I
 			},
 		},
 		ReservationTime: reservation.ReservationTime,
+		Confirmed:       reservation.Confirmed,
 	}, nil
 }
 
@@ -160,11 +165,11 @@ func (h *Handler) GetAllReservationByUserId(ctx context.Context, input *proto_re
 	}, nil
 }
 
-func (h *Handler) UpdateReservation(ctx context.Context, input *proto_reservation.ReservationSQLRequest) (*proto_reservation.StatusResponse, error) {
-	if input.GetUserID() == "" {
-		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "user id is required")
+func (h *Handler) UpdateReservation(ctx context.Context, input *proto_reservation.UpdateReservationRequest) (*proto_reservation.StatusResponse, error) {
+	if input.GetReservationID() == "" {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "reservation id is required")
 	}
-	if input.GetUserID() == "" {
+	if input.GetTableID() == "" {
 		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "table id is required")
 	}
 	if input.GetReservationTime() == "" {
@@ -172,9 +177,10 @@ func (h *Handler) UpdateReservation(ctx context.Context, input *proto_reservatio
 	}
 
 	err := h.service.Reservations.Update(ctx, &domain.UpdateReservationInputSql{
-		ReservationID:   input.GetUserID(),
+		ReservationID:   input.GetReservationID(),
 		TableID:         input.GetTableID(),
 		ReservationTime: input.GetReservationTime(),
+		Confirmed:       false,
 	})
 	if err != nil {
 		logger.Error(err)
@@ -184,7 +190,6 @@ func (h *Handler) UpdateReservation(ctx context.Context, input *proto_reservatio
 		default:
 			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error "+err.Error())
 		}
-
 	}
 
 	return &proto_reservation.StatusResponse{Status: true}, nil
@@ -278,10 +283,46 @@ func (h *Handler) GetAllReservationByRestaurantId(ctx context.Context, input *pr
 				},
 			},
 			ReservationTime: res.ReservationTime,
+			Confirmed:       res.Confirmed,
 		}
 	}
 
 	return &proto_reservation.ReservationListResponse{
 		Reservations: reservResp,
 	}, nil
+}
+
+func (h *Handler) ConfirmReservation(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.StatusResponse, error) {
+	if input.GetId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+
+	reservation, err := h.service.Reservations.GetById(ctx, input.GetId())
+	if err != nil {
+		logger.Error(err)
+		switch {
+		case errors.Is(err, domain.ErrNotFoundInDB):
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.NotFound, "table not found")
+		default:
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error "+err.Error())
+		}
+	}
+	if !reservation.Confirmed {
+		err = h.service.Reservations.Update(ctx, &domain.UpdateReservationInputSql{
+			ReservationID:   reservation.ID.String(),
+			TableID:         reservation.Table.ID.String(),
+			ReservationTime: reservation.ReservationTime,
+			Confirmed:       true,
+		})
+		if err != nil {
+			logger.Error(err)
+			switch {
+			case errors.Is(err, domain.ErrNotFoundInDB):
+				return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, domain.ErrNotFoundInDB.Error()+" at update reservation")
+			default:
+				return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error "+err.Error())
+			}
+		}
+	}
+	return &proto_reservation.StatusResponse{Status: true}, nil
 }

@@ -62,17 +62,17 @@ func (s *TableService) MarkOccupied(ctx context.Context, tableId string) error {
 	if err != nil {
 		return err
 	}
-
 	table, err := s.repo.GetById(ctx, newTableId)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrNotFoundInDB):
 			return domain.ErrNotFoundInDB
-		case table.IsReserved:
-			return domain.ErrTableOccupied
 		default:
 			return err
 		}
+	}
+	if table.IsReserved {
+		return domain.ErrTableOccupied
 	}
 	return s.repo.SetStatusById(ctx, &domain.StatusTableInputSql{TableID: table.ID, IsReserved: true})
 }

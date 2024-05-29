@@ -24,10 +24,10 @@ func NewReservationRepo(db *pgxpool.Pool) *ReservationRepo {
 
 func (r *ReservationRepo) Create(ctx context.Context, reservation *domain.ReservationSql) error {
 	query := `
-	INSERT INTO reservations (userid, tableid, reservationtime, reservationdate) 
-VALUES ($1, $2, $3, CURRENT_DATE)
+	INSERT INTO reservations (userid, tableid, reservationtime, reservationdate, confirmed) 
+VALUES ($1, $2, $3, CURRENT_DATE, $4)
 RETURNING id;`
-	args := []any{reservation.UserID, reservation.TableID, reservation.ReservationTime}
+	args := []any{reservation.UserID, reservation.TableID, reservation.ReservationTime, reservation.Confirmed}
 
 	err := r.db.QueryRow(ctx, query, args...).Scan(&reservation.ID)
 	if err != nil {
@@ -54,7 +54,7 @@ func (r *ReservationRepo) Delete(ctx context.Context, reservationId uuid.UUID) e
 
 func (r *ReservationRepo) GetById(ctx context.Context, resId uuid.UUID) (*domain.ReservationStruct, error) {
 	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
-restables.isreserved, restables.tablenumber,  restaurants.*, reservations.reservationtime
+restables.isreserved, restables.tablenumber,  restaurants.*, reservations.reservationtime, reservations.confirmed
 from reservations 
 join restables on reservations.tableid = restables.id 
 join restaurants on restables.restaurantid = restaurants.id 
@@ -72,6 +72,7 @@ where reservations.id = $1`
 		&reservation.Table.Restaurant.Address,
 		&reservation.Table.Restaurant.Contact,
 		&reservation.ReservationTime,
+		&reservation.Confirmed,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -85,7 +86,7 @@ where reservations.id = $1`
 
 func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId string) ([]*domain.ReservationStruct, error) {
 	query := `Select reservations.id, reservations.userid, restables.id, restables.numberofseats,
-restables.isreserved, restables.tablenumber,  restaurants.* , reservations.reservationtime
+restables.isreserved, restables.tablenumber,  restaurants.* , reservations.reservationtime, reservations.confirmed
 from reservations 
 join restables on reservations.tableid = restables.id 
 join restaurants on restables.restaurantid = restaurants.id 
@@ -113,6 +114,7 @@ where reservations.userId = $1`
 			&reservation.Table.Restaurant.Address,
 			&reservation.Table.Restaurant.Contact,
 			&reservation.ReservationTime,
+			&reservation.Confirmed,
 		)
 		if err != nil {
 			return nil, err
@@ -134,8 +136,8 @@ func (r *ReservationRepo) Update(ctx context.Context, upReserv *domain.Reservati
 		return err
 	}
 
-	query := "UPDATE reservations SET tableid = $1, reservationtime = $2, reservationdate = CURRENT_DATE WHERE id = $3"
-	_, err = tx.Exec(ctx, query, upReserv.TableID, upReserv.ReservationTime, upReserv.ID)
+	query := "UPDATE reservations SET tableid = $1, reservationtime = $2, reservationdate = CURRENT_DATE, confirmed = $3 WHERE id = $4"
+	_, err = tx.Exec(ctx, query, upReserv.TableID, upReserv.ReservationTime, upReserv.Confirmed, upReserv.ID)
 	if err != nil {
 		tx.Rollback(ctx)
 		return err
@@ -146,7 +148,7 @@ func (r *ReservationRepo) Update(ctx context.Context, upReserv *domain.Reservati
 
 func (r *ReservationRepo) GetAllByRestaurantId(ctx context.Context, restaurantId string) ([]*domain.ReservationStruct, error) {
 	query := `SELECT reservations.id, reservations.userid, restables.id, restables.numberofseats,
-       restables.isreserved, restables.tablenumber, restaurants.*, reservations.reservationtime
+       restables.isreserved, restables.tablenumber, restaurants.*, reservations.reservationtime, reservations.confirmed
 FROM reservations 
 JOIN restables ON reservations.tableid = restables.id 
 JOIN restaurants ON restables.restaurantid = restaurants.id 
@@ -174,6 +176,7 @@ WHERE restaurants.id = $1 AND reservations.reservationdate = CURRENT_DATE`
 			&reservation.Table.Restaurant.Address,
 			&reservation.Table.Restaurant.Contact,
 			&reservation.ReservationTime,
+			&reservation.Confirmed,
 		)
 		if err != nil {
 			return nil, err

@@ -15,14 +15,18 @@ func NewreservationService(repo repo.Reservations) *ReservationService {
 	return &ReservationService{repo: repo}
 }
 
-func (s *ReservationService) Create(ctx context.Context, reservation *domain.ReservationInputSql) error {
+func (s *ReservationService) Create(ctx context.Context, reservation *domain.ReservationInputSql) (string, error) {
 	newReservation := domain.ReservationSql{
 		UserID:          reservation.UserID,
 		TableID:         reservation.TableID,
 		ReservationTime: reservation.ReservationTime,
+		Confirmed:       reservation.Confirmed,
 	}
-
-	return s.repo.Create(ctx, &newReservation)
+	err := s.repo.Create(ctx, &newReservation)
+	if err != nil {
+		return "", err
+	}
+	return newReservation.ID, nil
 }
 
 func (s *ReservationService) DeleteById(ctx context.Context, reservationId string) error {
@@ -54,6 +58,7 @@ func (s *ReservationService) Update(ctx context.Context, upReserv *domain.Update
 		ID:              upReserv.ReservationID,
 		TableID:         upReserv.TableID,
 		ReservationTime: upReserv.ReservationTime,
+		Confirmed:       upReserv.Confirmed,
 	}
 
 	return s.repo.Update(ctx, &newReservation)

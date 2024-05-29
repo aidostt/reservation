@@ -32,6 +32,7 @@ type ReservationSql struct {
 	UserID          string `json:"userId"`
 	TableID         string `json:"tableId"`
 	ReservationTime string `json:"reservationTime"`
+	Confirmed       bool   `json:"confirmed"`
 }
 
 type ReservationStruct struct {
@@ -39,4 +40,5 @@ type ReservationStruct struct {
 	UserID          string    `json:"userId"`
 	Table           TableStruct
 	ReservationTime string `json:"reservationTime"`
+	Confirmed       bool   `json:"confirmed"`
 }
