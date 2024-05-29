@@ -4,6 +4,7 @@ import (
 	"context"
 	"dip/domain"
 	"dip/repository"
+	"dip/service/photos"
 	"dip/service/reservation"
 	"dip/service/restaurant"
 	"dip/service/table"
@@ -39,10 +40,16 @@ type Reservations interface {
 	DeleteById(ctx context.Context, resId string) error
 }
 
+type Photos interface {
+	Upload(ctx context.Context, photos []*domain.PhotoSql) error
+	Delete(ctx context.Context, url, restaurantID string) error
+}
+
 type Service struct {
 	Restaurants
 	Reservations
 	Tables
+	Photos
 }
 
 type Dependencies struct {
@@ -55,6 +62,7 @@ func NewService(deps Dependencies) *Service {
 	return &Service{
 		Restaurants:  restaurant.NewRestaurantService(deps.Repos.Restaurants),
 		Tables:       table.NewTableService(deps.Repos.Tables),
-		Reservations: reservation.NewreservationService(deps.Repos.Reservations),
+		Reservations: reservation.NewReservationService(deps.Repos.Reservations),
+		Photos:       photos.NewPhotosService(deps.Repos.Photos),
 	}
 }

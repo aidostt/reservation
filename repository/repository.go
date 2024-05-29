@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"dip/domain"
+	"dip/repository/photos"
 	"dip/repository/reservation"
 	"dip/repository/restaurant"
 	"dip/repository/table"
@@ -40,10 +41,16 @@ type Reservations interface {
 	Delete(ctx context.Context, resId uuid.UUID) error
 }
 
+type Photos interface {
+	Upload(ctx context.Context, photos []*domain.PhotoSql) error
+	Delete(ctx context.Context, url string, restaurantID uuid.UUID) error
+}
+
 type Repository struct {
 	Restaurants
 	Tables
 	Reservations
+	Photos
 }
 
 func NewRepository(db *pgxpool.Pool) *Repository {
@@ -51,5 +58,6 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 		Restaurants:  restaurant.NewRestaurantRepo(db),
 		Tables:       table.NewRestaurantRepo(db),
 		Reservations: reservation.NewReservationRepo(db),
+		Photos:       photos.NewPhotoRepo(db),
 	}
 }

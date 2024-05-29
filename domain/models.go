@@ -9,6 +9,13 @@ type RestaurantSql struct {
 	Name    string    `json:"name"`
 	Address string    `json:"address"`
 	Contact string    `json:"contact"`
+	Photos  []PhotoSql
+}
+
+type PhotoSql struct {
+	ID           uuid.UUID `json:"id"`
+	RestaurantID uuid.UUID `json:"restaurantID"`
+	URl          string    `json:"url"`
 }
 
 type TableSql struct {

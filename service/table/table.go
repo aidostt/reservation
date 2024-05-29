@@ -71,9 +71,9 @@ func (s *TableService) MarkOccupied(ctx context.Context, tableId string) error {
 			return err
 		}
 	}
-	if table.IsReserved {
-		return domain.ErrTableOccupied
-	}
+	//if table.IsReserved {
+	//	return domain.ErrTableOccupied
+	//}
 	return s.repo.SetStatusById(ctx, &domain.StatusTableInputSql{TableID: table.ID, IsReserved: true})
 }
 
@@ -88,8 +88,6 @@ func (s *TableService) MarkVacant(ctx context.Context, tableId string) error {
 		switch {
 		case errors.Is(err, domain.ErrNotFoundInDB):
 			return domain.ErrNotFoundInDB
-		case table.IsReserved:
-			return domain.ErrTableOccupied
 		default:
 			return err
 		}

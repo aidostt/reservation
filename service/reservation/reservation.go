@@ -11,7 +11,7 @@ type ReservationService struct {
 	repo repo.Reservations
 }
 
-func NewreservationService(repo repo.Reservations) *ReservationService {
+func NewReservationService(repo repo.Reservations) *ReservationService {
 	return &ReservationService{repo: repo}
 }
 
