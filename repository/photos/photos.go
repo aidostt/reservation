@@ -3,8 +3,11 @@ package photos
 import (
 	"context"
 	"dip/domain"
+	"errors"
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"strings"
 )
 
 //TODO: implement delete func
@@ -20,24 +23,19 @@ func NewPhotoRepo(db *pgxpool.Pool) *PhotoRepo {
 }
 
 func (r *PhotoRepo) Upload(ctx context.Context, photos []*domain.PhotoSql) error {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return err
-	}
-
 	for _, photo := range photos {
-		_, err = tx.Exec(ctx, `INSERT INTO photos (restaurantID, url) VALUES ($1, $2)`, photo.RestaurantID, photo.URl)
+		_, err := r.db.Exec(ctx, `INSERT INTO photos (restaurantID, url) VALUES ($1, $2)`, photo.RestaurantID, photo.URl)
 		if err != nil {
-			tx.Rollback(ctx)
-			return err
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) {
+				if strings.Contains(pgErr.ConstraintName, "photos_url_key") {
+					continue
+				}
+			} else {
+				return err
+			}
 		}
 	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
