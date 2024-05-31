@@ -3,7 +3,7 @@ module dip
 go 1.20
 
 require (
-	github.com/aidostt/protos v0.6.1
+	github.com/aidostt/protos v0.6.2
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/joho/godotenv v1.5.1

@@ -16,6 +16,8 @@ type Restaurants interface {
 	Create(ctx context.Context, res *domain.RestaurantSql) error
 	DeleteById(ctx context.Context, restId string) error
 	UpdateById(ctx context.Context, upTable *domain.UpdateRestaurantInputSql) error
+	Search(ctx context.Context, query string, limit, offset int) ([]*domain.RestaurantSql, error)
+	GetSuggestions(ctx context.Context, query string) ([]*domain.RestaurantSql, error)
 }
 
 type Tables interface {

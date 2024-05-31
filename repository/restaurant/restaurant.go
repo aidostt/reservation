@@ -100,3 +100,53 @@ func (r *RestaurantRepo) UpdateById(ctx context.Context, upRest *domain.Restaura
 
 	return tx.Commit(ctx)
 }
+
+func (r *RestaurantRepo) Search(ctx context.Context, query string, limit, offset int) ([]*domain.RestaurantSql, error) {
+	querySQL := "SELECT * FROM restaurants WHERE LOWER(name) LIKE $1 LIMIT $2 OFFSET $3"
+	rows, err := r.db.Query(ctx, querySQL, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var restaurants []*domain.RestaurantSql
+	for rows.Next() {
+		restaurant := new(domain.RestaurantSql)
+		err := rows.Scan(&restaurant.ID, &restaurant.Name, &restaurant.Address, &restaurant.Contact)
+		if err != nil {
+			return nil, err
+		}
+		restaurants = append(restaurants, restaurant)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return restaurants, nil
+}
+
+func (r *RestaurantRepo) GetSuggestions(ctx context.Context, query string) ([]*domain.RestaurantSql, error) {
+	querySQL := "SELECT id, name, address, contact FROM restaurants WHERE LOWER(name) LIKE $1 LIMIT 10"
+	rows, err := r.db.Query(ctx, querySQL, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var restaurants []*domain.RestaurantSql
+	for rows.Next() {
+		restaurant := new(domain.RestaurantSql)
+		err := rows.Scan(&restaurant.ID, &restaurant.Name, &restaurant.Address, &restaurant.Contact)
+		if err != nil {
+			return nil, err
+		}
+		restaurants = append(restaurants, restaurant)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return restaurants, nil
+}

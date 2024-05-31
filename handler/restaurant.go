@@ -33,6 +33,52 @@ func (h *Handler) GetAllRestaurants(ctx context.Context, input *proto_restaurant
 	}, nil
 }
 
+func (h *Handler) SearchRestaurants(ctx context.Context, input *proto_restaurant.SearchRequest) (*proto_restaurant.RestaurantListResponse, error) {
+	restaurants, err := h.service.Restaurants.Search(ctx, input.Query, int(input.Limit), int(input.Offset))
+	if err != nil {
+		logger.Error(err)
+		switch {
+		default:
+			return nil, status.Error(codes.Internal, "internal error: "+err.Error())
+		}
+	}
+	restaurantResponse := make([]*proto_restaurant.RestaurantObject, len(restaurants))
+	for index, restaurant := range restaurants {
+		restaurantResponse[index] = &proto_restaurant.RestaurantObject{
+			Id:      restaurant.ID.String(),
+			Name:    restaurant.Name,
+			Address: restaurant.Address,
+			Contact: restaurant.Contact,
+		}
+	}
+	return &proto_restaurant.RestaurantListResponse{
+		Restaurants: restaurantResponse,
+	}, nil
+}
+
+func (h *Handler) GetRestaurantSuggestions(ctx context.Context, input *proto_restaurant.SuggestionRequest) (*proto_restaurant.RestaurantListResponse, error) {
+	restaurants, err := h.service.Restaurants.GetSuggestions(ctx, input.Query)
+	if err != nil {
+		logger.Error(err)
+		switch {
+		default:
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+	restaurantResponse := make([]*proto_restaurant.RestaurantObject, len(restaurants))
+	for index, restaurant := range restaurants {
+		restaurantResponse[index] = &proto_restaurant.RestaurantObject{
+			Id:      restaurant.ID.String(),
+			Name:    restaurant.Name,
+			Address: restaurant.Address,
+			Contact: restaurant.Contact,
+		}
+	}
+	return &proto_restaurant.RestaurantListResponse{
+		Restaurants: restaurantResponse,
+	}, nil
+}
+
 func (h *Handler) GetRestaurant(ctx context.Context, input *proto_restaurant.IDRequest) (*proto_restaurant.RestaurantObject, error) {
 	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
