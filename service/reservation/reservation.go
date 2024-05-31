@@ -4,6 +4,7 @@ import (
 	"context"
 	"dip/domain"
 	repo "dip/repository"
+	"errors"
 	"github.com/gofrs/uuid"
 )
 
@@ -62,4 +63,19 @@ func (s *ReservationService) Update(ctx context.Context, upReserv *domain.Update
 	}
 
 	return s.repo.Update(ctx, &newReservation)
+}
+
+func (s *ReservationService) TableOccupied(ctx context.Context, tableID, reservationTime string) (bool, error) {
+	tableUUID, err := uuid.FromString(tableID)
+	if err != nil {
+		return true, err
+	}
+	err = s.repo.TableOccupied(ctx, tableUUID, reservationTime)
+	if err != nil {
+		if errors.Is(err, domain.ErrTableOccupied) {
+			return true, nil
+		}
+		return true, err
+	}
+	return false, nil
 }

@@ -20,12 +20,17 @@ func (h *Handler) MakeReservation(ctx context.Context, input *proto_reservation.
 	if input.GetReservationTime() == "" {
 		return nil, status.Error(codes.InvalidArgument, "reservation time is required")
 	}
-	err := h.service.Tables.MarkOccupied(ctx, input.GetTableID())
+	occupied, err := h.service.Reservations.TableOccupied(ctx, input.GetTableID(), input.GetReservationTime())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if occupied {
+		return nil, status.Error(codes.InvalidArgument, domain.ErrTableOccupied.Error())
+	}
+	err = h.service.Tables.MarkOccupied(ctx, input.GetTableID())
 	if err != nil {
 		logger.Error(err)
 		switch {
-		case errors.Is(err, domain.ErrTableOccupied):
-			return nil, status.Error(codes.InvalidArgument, "table is already occupied")
 		case errors.Is(err, domain.ErrNotFoundInDB):
 			return nil, status.Error(codes.InvalidArgument, "invalid table id")
 		default:

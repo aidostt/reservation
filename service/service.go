@@ -38,6 +38,7 @@ type Reservations interface {
 	GetAllByRestaurantId(ctx context.Context, restaurantId string) ([]*domain.ReservationStruct, error)
 	Update(ctx context.Context, upReserv *domain.UpdateReservationInputSql) error
 	DeleteById(ctx context.Context, resId string) error
+	TableOccupied(ctx context.Context, tableID, reservationTime string) (bool, error)
 }
 
 type Photos interface {

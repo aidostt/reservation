@@ -191,3 +191,16 @@ WHERE restaurants.id = $1 AND reservations.reservationdate = CURRENT_DATE`
 
 	return reservations, nil
 }
+
+func (r *ReservationRepo) TableOccupied(ctx context.Context, tableID uuid.UUID, reservationTime string) error {
+	query := `SELECT EXISTS (SELECT 1 FROM reservations WHERE tableid = $1 AND reservationtime = $2)`
+	var exists bool
+	err := r.db.QueryRow(ctx, query, tableID, reservationTime).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return domain.ErrTableOccupied
+	}
+	return nil
+}

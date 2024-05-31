@@ -71,9 +71,6 @@ func (s *TableService) MarkOccupied(ctx context.Context, tableId string) error {
 			return err
 		}
 	}
-	//if table.IsReserved {
-	//	return domain.ErrTableOccupied
-	//}
 	return s.repo.SetStatusById(ctx, &domain.StatusTableInputSql{TableID: table.ID, IsReserved: true})
 }
 
