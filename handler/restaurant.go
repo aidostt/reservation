@@ -21,11 +21,16 @@ func (h *Handler) GetAllRestaurants(ctx context.Context, input *proto_restaurant
 	}
 	restaurantResponse := make([]*proto_restaurant.RestaurantObject, len(restaurants))
 	for index, restaurant := range restaurants {
+		photoUrls := make([]string, len(restaurant.Photos))
+		for i, photo := range restaurant.Photos {
+			photoUrls[i] = photo.URl
+		}
 		restaurantResponse[index] = &proto_restaurant.RestaurantObject{
-			Id:      restaurant.ID.String(),
-			Name:    restaurant.Name,
-			Address: restaurant.Address,
-			Contact: restaurant.Contact,
+			Id:        restaurant.ID.String(),
+			Name:      restaurant.Name,
+			Address:   restaurant.Address,
+			Contact:   restaurant.Contact,
+			ImageUrls: photoUrls,
 		}
 	}
 	return &proto_restaurant.RestaurantListResponse{
@@ -44,11 +49,16 @@ func (h *Handler) SearchRestaurants(ctx context.Context, input *proto_restaurant
 	}
 	restaurantResponse := make([]*proto_restaurant.RestaurantObject, len(restaurants))
 	for index, restaurant := range restaurants {
+		photoUrls := make([]string, len(restaurant.Photos))
+		for i, photo := range restaurant.Photos {
+			photoUrls[i] = photo.URl
+		}
 		restaurantResponse[index] = &proto_restaurant.RestaurantObject{
-			Id:      restaurant.ID.String(),
-			Name:    restaurant.Name,
-			Address: restaurant.Address,
-			Contact: restaurant.Contact,
+			Id:        restaurant.ID.String(),
+			Name:      restaurant.Name,
+			Address:   restaurant.Address,
+			Contact:   restaurant.Contact,
+			ImageUrls: photoUrls,
 		}
 	}
 	return &proto_restaurant.RestaurantListResponse{
@@ -89,17 +99,23 @@ func (h *Handler) GetRestaurant(ctx context.Context, input *proto_restaurant.IDR
 		logger.Error(err)
 		switch {
 		case errors.Is(err, domain.ErrNotFoundInDB):
-			return nil, status.Error(codes.NotFound, "user not found")
+			return nil, status.Error(codes.NotFound, "restaurant not found")
 		default:
-			return nil, status.Error(codes.Internal, "internal error"+err.Error())
+			return nil, status.Error(codes.Internal, "internal error: "+err.Error())
 		}
-
 	}
+
+	photoUrls := make([]string, len(res.Photos))
+	for i, photo := range res.Photos {
+		photoUrls[i] = photo.URl
+	}
+
 	return &proto_restaurant.RestaurantObject{
-		Id:      res.ID.String(),
-		Name:    res.Name,
-		Address: res.Address,
-		Contact: res.Contact,
+		Id:        res.ID.String(),
+		Name:      res.Name,
+		Address:   res.Address,
+		Contact:   res.Contact,
+		ImageUrls: photoUrls,
 	}, nil
 }
 

@@ -20,13 +20,13 @@ func NewRestaurantRepo(db *pgxpool.Pool) *RestaurantRepo {
 }
 
 func (r *RestaurantRepo) GetById(ctx context.Context, id uuid.UUID) (*domain.RestaurantSql, error) {
-	query := `SELECT * FROM restaurants WHERE id = $1`
-	var table domain.RestaurantSql
+	query := `SELECT id, name, address, contact FROM restaurants WHERE id = $1`
+	var restaurant domain.RestaurantSql
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&table.ID,
-		&table.Name,
-		&table.Address,
-		&table.Contact,
+		&restaurant.ID,
+		&restaurant.Name,
+		&restaurant.Address,
+		&restaurant.Contact,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -35,22 +35,55 @@ func (r *RestaurantRepo) GetById(ctx context.Context, id uuid.UUID) (*domain.Res
 		return nil, err
 	}
 
-	return &table, nil
+	photosQuery := `SELECT id, restaurantid, url FROM photos WHERE restaurantid = $1`
+	rows, err := r.db.Query(ctx, photosQuery, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var photo domain.PhotoSql
+		if err = rows.Scan(&photo.ID, &photo.RestaurantID, &photo.URl); err != nil {
+			return nil, err
+		}
+		restaurant.Photos = append(restaurant.Photos, photo)
+	}
+
+	return &restaurant, nil
 }
 
 func (r *RestaurantRepo) GetAll(ctx context.Context) ([]*domain.RestaurantSql, error) {
-	query := "SELECT * FROM restaurants"
+	query := "SELECT id, name, address, contact FROM restaurants"
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	restaurants := make([]*domain.RestaurantSql, 0)
+	defer rows.Close()
+
+	var restaurants []*domain.RestaurantSql
 	for rows.Next() {
 		restaurant := new(domain.RestaurantSql)
 		err := rows.Scan(&restaurant.ID, &restaurant.Name, &restaurant.Address, &restaurant.Contact)
 		if err != nil {
 			return nil, err
 		}
+
+		photosQuery := `SELECT id, restaurantid, url FROM photos WHERE restaurantid = $1`
+		photosRows, err := r.db.Query(ctx, photosQuery, restaurant.ID)
+		if err != nil {
+			return nil, err
+		}
+		defer photosRows.Close()
+
+		for photosRows.Next() {
+			var photo domain.PhotoSql
+			if err := photosRows.Scan(&photo.ID, &photo.RestaurantID, &photo.URl); err != nil {
+				return nil, err
+			}
+			restaurant.Photos = append(restaurant.Photos, photo)
+		}
+
 		restaurants = append(restaurants, restaurant)
 	}
 
@@ -102,7 +135,7 @@ func (r *RestaurantRepo) UpdateById(ctx context.Context, upRest *domain.Restaura
 }
 
 func (r *RestaurantRepo) Search(ctx context.Context, query string, limit, offset int) ([]*domain.RestaurantSql, error) {
-	querySQL := "SELECT * FROM restaurants WHERE LOWER(name) LIKE $1 LIMIT $2 OFFSET $3"
+	querySQL := "SELECT id, name, address, contact FROM restaurants WHERE LOWER(name) LIKE $1 LIMIT $2 OFFSET $3"
 	rows, err := r.db.Query(ctx, querySQL, query, limit, offset)
 	if err != nil {
 		return nil, err
@@ -116,6 +149,22 @@ func (r *RestaurantRepo) Search(ctx context.Context, query string, limit, offset
 		if err != nil {
 			return nil, err
 		}
+
+		photosQuery := `SELECT id, restaurantid, url FROM photos WHERE restaurantid = $1`
+		photosRows, err := r.db.Query(ctx, photosQuery, restaurant.ID)
+		if err != nil {
+			return nil, err
+		}
+		defer photosRows.Close()
+
+		for photosRows.Next() {
+			var photo domain.PhotoSql
+			if err := photosRows.Scan(&photo.ID, &photo.RestaurantID, &photo.URl); err != nil {
+				return nil, err
+			}
+			restaurant.Photos = append(restaurant.Photos, photo)
+		}
+
 		restaurants = append(restaurants, restaurant)
 	}
 
