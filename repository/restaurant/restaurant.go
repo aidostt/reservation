@@ -134,33 +134,33 @@ func (r *RestaurantRepo) UpdateById(ctx context.Context, upRest *domain.Restaura
 	return tx.Commit(ctx)
 }
 
-func (r *RestaurantRepo) Search(ctx context.Context, query string, limit, offset int) ([]*domain.RestaurantSql, error) {
+func (r *RestaurantRepo) Search(ctx context.Context, query string, limit, offset int) ([]*domain.RestaurantSql, int, error) {
 	querySQL := "SELECT id, name, address, contact FROM restaurants WHERE LOWER(name) LIKE $1 LIMIT $2 OFFSET $3"
 	rows, err := r.db.Query(ctx, querySQL, query, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	var restaurants []*domain.RestaurantSql
 	for rows.Next() {
 		restaurant := new(domain.RestaurantSql)
-		err := rows.Scan(&restaurant.ID, &restaurant.Name, &restaurant.Address, &restaurant.Contact)
+		err = rows.Scan(&restaurant.ID, &restaurant.Name, &restaurant.Address, &restaurant.Contact)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		photosQuery := `SELECT id, restaurantid, url FROM photos WHERE restaurantid = $1`
 		photosRows, err := r.db.Query(ctx, photosQuery, restaurant.ID)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		defer photosRows.Close()
 
 		for photosRows.Next() {
 			var photo domain.PhotoSql
-			if err := photosRows.Scan(&photo.ID, &photo.RestaurantID, &photo.URl); err != nil {
-				return nil, err
+			if err = photosRows.Scan(&photo.ID, &photo.RestaurantID, &photo.URl); err != nil {
+				return nil, 0, err
 			}
 			restaurant.Photos = append(restaurant.Photos, photo)
 		}
@@ -169,10 +169,18 @@ func (r *RestaurantRepo) Search(ctx context.Context, query string, limit, offset
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return restaurants, nil
+	// Perform a count query
+	countQuery := "SELECT COUNT(*) FROM restaurants WHERE LOWER(name) LIKE $1"
+	var total int
+	err = r.db.QueryRow(ctx, countQuery, "%"+query+"%").Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return restaurants, total, nil
 }
 
 func (r *RestaurantRepo) GetSuggestions(ctx context.Context, query string) ([]*domain.RestaurantSql, error) {

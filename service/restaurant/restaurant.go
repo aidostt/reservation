@@ -41,7 +41,7 @@ func (s *RestaurantService) DeleteById(ctx context.Context, restId string) error
 	return s.repo.Delete(ctx, newTableId)
 }
 
-func (s *RestaurantService) Search(ctx context.Context, query string, limit, offset int) ([]*domain.RestaurantSql, error) {
+func (s *RestaurantService) Search(ctx context.Context, query string, limit, offset int) ([]*domain.RestaurantSql, int, error) {
 	return s.repo.Search(ctx, query, limit, offset)
 }
 

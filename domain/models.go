@@ -2,6 +2,7 @@ package domain
 
 import (
 	"github.com/gofrs/uuid"
+	"time"
 )
 
 type RestaurantSql struct {
@@ -46,6 +47,7 @@ type ReservationStruct struct {
 	ID              uuid.UUID `json:"id"`
 	UserID          string    `json:"userId"`
 	Table           TableStruct
-	ReservationTime string `json:"reservationTime"`
-	Confirmed       bool   `json:"confirmed"`
+	ReservationTime string    `json:"reservationTime"`
+	ReservationDate time.Time `json:"reservationDate"`
+	Confirmed       bool      `json:"confirmed"`
 }

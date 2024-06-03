@@ -30,7 +30,7 @@ func Run(configPath, envPath string) {
 		return
 	}
 
-	pool, err := pgxpool.New(context.Background(), cfg.Postgres.URI)
+	pool, err := pgxpool.New(context.Background(), fmt.Sprintf("postgres://%v:%v@%v/%v?sslmode=disable", cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.Host, cfg.Postgres.DBName))
 	if err != nil {
 		log.Fatalf("Unable to connection to database: %v\n", err)
 	}
@@ -56,7 +56,7 @@ func Run(configPath, envPath string) {
 		return
 	}
 	go func() {
-		if err := srv.Run(l); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err = srv.Run(l); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Errorf("error occurred while running grpc server: %s\n", err.Error())
 		}
 	}()

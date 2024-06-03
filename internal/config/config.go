@@ -24,7 +24,10 @@ type (
 	}
 
 	PostgresConfig struct {
-		URI string
+		User     string
+		Host     string
+		Password string
+		DBName   string
 	}
 
 	GRPCConfig struct {
@@ -56,7 +59,10 @@ func unmarshal(cfg *Config) error {
 }
 
 func setFromEnv(cfg *Config) {
-	cfg.Postgres.URI = os.Getenv("POSTGRES_URI")
+	cfg.Postgres.User = os.Getenv("POSTGRES_USER")
+	cfg.Postgres.Password = os.Getenv("POSTGRES_PASSWORD")
+	cfg.Postgres.Host = os.Getenv("POSTGRES_HOST")
+	cfg.Postgres.DBName = os.Getenv("POSTGRES_DB")
 
 	cfg.GRPC.Host = os.Getenv("GRPC_HOST")
 

@@ -8,6 +8,7 @@ import (
 	proto_reservation "github.com/aidostt/protos/gen/go/reservista/reservation"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (h *Handler) MakeReservation(ctx context.Context, input *proto_reservation.ReservationSQLRequest) (*proto_reservation.IDRequest, error) {
@@ -68,7 +69,6 @@ func (h *Handler) GetReservation(ctx context.Context, input *proto_reservation.I
 		default:
 			return nil, status.Error(codes.Internal, "internal error")
 		}
-
 	}
 
 	return &proto_reservation.ReservationObject{
@@ -87,10 +87,10 @@ func (h *Handler) GetReservation(ctx context.Context, input *proto_reservation.I
 			},
 		},
 		ReservationTime: reservation.ReservationTime,
+		ReservationDate: timestamppb.New(reservation.ReservationDate),
 		Confirmed:       reservation.Confirmed,
 	}, nil
 }
-
 func (h *Handler) DeleteReservationById(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.StatusResponse, error) {
 	if input.GetId() == "" {
 		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "id is required")
@@ -162,6 +162,8 @@ func (h *Handler) GetAllReservationByUserId(ctx context.Context, input *proto_re
 				},
 			},
 			ReservationTime: res.ReservationTime,
+			ReservationDate: timestamppb.New(res.ReservationDate), // Convert string to Timestamp
+			Confirmed:       res.Confirmed,
 		}
 	}
 
@@ -169,7 +171,6 @@ func (h *Handler) GetAllReservationByUserId(ctx context.Context, input *proto_re
 		Reservations: reservResp,
 	}, nil
 }
-
 func (h *Handler) UpdateReservation(ctx context.Context, input *proto_reservation.UpdateReservationRequest) (*proto_reservation.StatusResponse, error) {
 	if input.GetReservationID() == "" {
 		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "reservation id is required")
@@ -288,6 +289,7 @@ func (h *Handler) GetAllReservationByRestaurantId(ctx context.Context, input *pr
 				},
 			},
 			ReservationTime: res.ReservationTime,
+			ReservationDate: timestamppb.New(res.ReservationDate), // Convert string to Timestamp
 			Confirmed:       res.Confirmed,
 		}
 	}
@@ -296,7 +298,6 @@ func (h *Handler) GetAllReservationByRestaurantId(ctx context.Context, input *pr
 		Reservations: reservResp,
 	}, nil
 }
-
 func (h *Handler) ConfirmReservation(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.StatusResponse, error) {
 	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
