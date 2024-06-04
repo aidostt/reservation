@@ -29,8 +29,7 @@ func Run(configPath, envPath string) {
 
 		return
 	}
-
-	pool, err := pgxpool.New(context.Background(), fmt.Sprintf("postgres://%v:%v@%v/%v?sslmode=disable", cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.Host, cfg.Postgres.DBName))
+	pool, err := pgxpool.New(context.Background(), fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.DBName))
 	if err != nil {
 		log.Fatalf("Unable to connection to database: %v\n", err)
 	}

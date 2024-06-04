@@ -27,6 +27,7 @@ type (
 		User     string
 		Host     string
 		Password string
+		Port     string
 		DBName   string
 	}
 
@@ -62,6 +63,7 @@ func setFromEnv(cfg *Config) {
 	cfg.Postgres.User = os.Getenv("POSTGRES_USER")
 	cfg.Postgres.Password = os.Getenv("POSTGRES_PASSWORD")
 	cfg.Postgres.Host = os.Getenv("POSTGRES_HOST")
+	cfg.Postgres.Port = os.Getenv("POSTGRES_PORT")
 	cfg.Postgres.DBName = os.Getenv("POSTGRES_DB")
 
 	cfg.GRPC.Host = os.Getenv("GRPC_HOST")
