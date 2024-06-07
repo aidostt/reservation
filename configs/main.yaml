@@ -5,6 +5,6 @@ grpc:
 
 
 userMicroservice:
-  host: localhost
+  host: authentication-service
   port: 5050
 

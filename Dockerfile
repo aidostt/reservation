@@ -10,6 +10,9 @@ WORKDIR /app
 # Copy the go.mod and go.sum files to download dependencies first
 COPY go.mod go.sum ./
 
+# Download dependencies
+RUN go mod download
+
 # Copy the source code into the container
 COPY . .
 
@@ -25,8 +28,8 @@ RUN wget https://github.com/golang-migrate/migrate/releases/download/v4.14.1/mig
 # Second stage: run the application
 FROM alpine:latest
 
-# Install necessary certificates
-RUN apk add --no-cache ca-certificates && update-ca-certificates
+# Install necessary certificates and PostgreSQL client
+RUN apk add --no-cache ca-certificates && update-ca-certificates && apk add --no-cache postgresql-client
 
 # Set the current working directory inside the container
 WORKDIR /app
@@ -34,9 +37,13 @@ WORKDIR /app
 # Copy the built binary from the builder stage
 COPY --from=builder /app .
 COPY --from=builder /usr/local/bin/migrate /usr/local/bin/migrate
+COPY wait-for-postgres.sh .
 
 # Expose the necessary port
 EXPOSE 9090
 
-# Command to run the migration and the application
-CMD ["sh", "-c", "migrate -path /app/migrations -database postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable up && ./api"]
+# Make the wait-for-postgres.sh script executable
+RUN chmod +x wait-for-postgres.sh
+
+# Command to run the wait-for-postgres script
+ENTRYPOINT ["./wait-for-postgres.sh"]
