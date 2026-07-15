@@ -5,7 +5,7 @@ import (
 	"dip/domain"
 	"errors"
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
