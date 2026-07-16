@@ -39,9 +39,10 @@ func Run(configPath, envPath string) {
 
 	repos := repository.NewRepository(pool)
 	services := service.NewService(service.Dependencies{
-		Environment: cfg.Environment,
-		Domain:      cfg.GRPC.Host,
-		Repos:       repos,
+		Environment:  cfg.Environment,
+		Domain:       cfg.GRPC.Host,
+		Repos:        repos,
+		TurnDuration: cfg.TurnDuration,
 	})
 	handlers := handler.NewHandler(services)
 

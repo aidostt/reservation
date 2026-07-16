@@ -36,18 +36,20 @@ type TableStruct struct {
 }
 
 type ReservationSql struct {
-	ID              string `json:"id"`
-	UserID          string `json:"userId"`
-	TableID         string `json:"tableId"`
-	ReservationTime string `json:"reservationTime"`
-	Confirmed       bool   `json:"confirmed"`
+	ID        string    `json:"id"`
+	UserID    string    `json:"userId"`
+	TableID   string    `json:"tableId"`
+	StartAt   time.Time `json:"startAt"`
+	EndsAt    time.Time `json:"endsAt"`
+	PartySize int       `json:"partySize"`
+	Confirmed bool      `json:"confirmed"`
 }
 
 type ReservationStruct struct {
-	ID              uuid.UUID `json:"id"`
-	UserID          string    `json:"userId"`
-	Table           TableStruct
-	ReservationTime string    `json:"reservationTime"`
-	ReservationDate time.Time `json:"reservationDate"`
-	Confirmed       bool      `json:"confirmed"`
+	ID        uuid.UUID `json:"id"`
+	UserID    string    `json:"userId"`
+	Table     TableStruct
+	StartAt   time.Time `json:"startAt"`
+	PartySize int       `json:"partySize"`
+	Confirmed bool      `json:"confirmed"`
 }

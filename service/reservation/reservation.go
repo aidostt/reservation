@@ -4,27 +4,32 @@ import (
 	"context"
 	"dip/domain"
 	repo "dip/repository"
-	"errors"
+	"time"
+
 	"github.com/gofrs/uuid"
 )
 
 type ReservationService struct {
 	repo repo.Reservations
+	// turnDuration is the restaurant's seating length; the reservation occupies
+	// its table for [start, start+turnDuration). It is policy, not client input.
+	turnDuration time.Duration
 }
 
-func NewReservationService(repo repo.Reservations) *ReservationService {
-	return &ReservationService{repo: repo}
+func NewReservationService(repo repo.Reservations, turnDuration time.Duration) *ReservationService {
+	return &ReservationService{repo: repo, turnDuration: turnDuration}
 }
 
 func (s *ReservationService) Create(ctx context.Context, reservation *domain.ReservationInputSql) (string, error) {
 	newReservation := domain.ReservationSql{
-		UserID:          reservation.UserID,
-		TableID:         reservation.TableID,
-		ReservationTime: reservation.ReservationTime,
-		Confirmed:       reservation.Confirmed,
+		UserID:    reservation.UserID,
+		TableID:   reservation.TableID,
+		StartAt:   reservation.StartAt,
+		EndsAt:    reservation.StartAt.Add(s.turnDuration),
+		PartySize: reservation.PartySize,
+		Confirmed: reservation.Confirmed,
 	}
-	err := s.repo.Create(ctx, &newReservation)
-	if err != nil {
+	if err := s.repo.Create(ctx, &newReservation); err != nil {
 		return "", err
 	}
 	return newReservation.ID, nil
@@ -55,27 +60,12 @@ func (s *ReservationService) GetAllByRestaurantId(ctx context.Context, restauran
 }
 
 func (s *ReservationService) Update(ctx context.Context, upReserv *domain.UpdateReservationInputSql) error {
-	newReservation := domain.ReservationSql{
-		ID:              upReserv.ReservationID,
-		TableID:         upReserv.TableID,
-		ReservationTime: upReserv.ReservationTime,
-		Confirmed:       upReserv.Confirmed,
-	}
-
-	return s.repo.Update(ctx, &newReservation)
-}
-
-func (s *ReservationService) TableOccupied(ctx context.Context, tableID, reservationTime string) (bool, error) {
-	tableUUID, err := uuid.FromString(tableID)
-	if err != nil {
-		return true, err
-	}
-	err = s.repo.TableOccupied(ctx, tableUUID, reservationTime)
-	if err != nil {
-		if errors.Is(err, domain.ErrTableOccupied) {
-			return true, nil
-		}
-		return true, err
-	}
-	return false, nil
+	return s.repo.Update(ctx, &domain.ReservationSql{
+		ID:        upReserv.ReservationID,
+		TableID:   upReserv.TableID,
+		StartAt:   upReserv.StartAt,
+		EndsAt:    upReserv.StartAt.Add(s.turnDuration),
+		PartySize: upReserv.PartySize,
+		Confirmed: upReserv.Confirmed,
+	})
 }

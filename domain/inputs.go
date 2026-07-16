@@ -1,23 +1,29 @@
 package domain
 
-import "github.com/gofrs/uuid"
+import (
+	"time"
+
+	"github.com/gofrs/uuid"
+)
 
 type GetByIdInputSql struct {
 	ID uuid.UUID `json:"id"`
 }
 
 type ReservationInputSql struct {
-	UserID          string `json:"userId"`
-	TableID         string `json:"tableId"`
-	ReservationTime string `json:"reservationTime"`
-	Confirmed       bool   `json:"confirmed"`
+	UserID    string    `json:"userId"`
+	TableID   string    `json:"tableId"`
+	StartAt   time.Time `json:"startAt"`
+	PartySize int       `json:"partySize"`
+	Confirmed bool      `json:"confirmed"`
 }
 
 type UpdateReservationInputSql struct {
-	ReservationID   string `json:"reservationId"`
-	TableID         string `json:"tableId"`
-	ReservationTime string `json:"reservationTime"`
-	Confirmed       bool   `json:"confirmed"`
+	ReservationID string    `json:"reservationId"`
+	TableID       string    `json:"tableId"`
+	StartAt       time.Time `json:"startAt"`
+	PartySize     int       `json:"partySize"`
+	Confirmed     bool      `json:"confirmed"`
 }
 
 type DeleteInputSql struct {

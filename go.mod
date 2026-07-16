@@ -3,7 +3,7 @@ module dip
 go 1.20
 
 require (
-	github.com/aidostt/protos v0.6.5
+	github.com/aidostt/protos v0.7.0
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/joho/godotenv v1.5.1
 	github.com/sirupsen/logrus v1.9.3

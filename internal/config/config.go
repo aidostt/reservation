@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	defaultGRPCPort = "9090"
-	authority       = "qrcode-generation-service"
-	EnvLocal        = "local"
+	defaultGRPCPort     = "9090"
+	authority           = "qrcode-generation-service"
+	EnvLocal            = "local"
+	defaultTurnDuration = 2 * time.Hour
 )
 
 type (
@@ -22,6 +23,9 @@ type (
 		Authority   string
 		GRPC        GRPCConfig `mapstructure:"grpc"`
 		Postgres    PostgresConfig
+		// TurnDuration is the seating length applied to every reservation; the
+		// booking occupies its table for [start, start+TurnDuration).
+		TurnDuration time.Duration
 	}
 
 	PostgresConfig struct {
@@ -57,6 +61,7 @@ func Init(configsDir, envDir string) (*Config, error) {
 }
 
 func unmarshal(cfg *Config) error {
+	cfg.TurnDuration = viper.GetDuration("reservation.turnDuration")
 	return viper.UnmarshalKey("grpc", &cfg.GRPC)
 }
 
@@ -98,4 +103,5 @@ func loadEnvVariables(envPath string) {
 
 func populateDefaults() {
 	viper.SetDefault("grpc.port", defaultGRPCPort)
+	viper.SetDefault("reservation.turnDuration", defaultTurnDuration)
 }

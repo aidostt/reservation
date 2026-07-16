@@ -8,6 +8,7 @@ import (
 	"dip/service/reservation"
 	"dip/service/restaurant"
 	"dip/service/table"
+	"time"
 )
 
 type Restaurants interface {
@@ -40,7 +41,6 @@ type Reservations interface {
 	GetAllByRestaurantId(ctx context.Context, restaurantId string) ([]*domain.ReservationStruct, error)
 	Update(ctx context.Context, upReserv *domain.UpdateReservationInputSql) error
 	DeleteById(ctx context.Context, resId string) error
-	TableOccupied(ctx context.Context, tableID, reservationTime string) (bool, error)
 }
 
 type Photos interface {
@@ -56,16 +56,17 @@ type Service struct {
 }
 
 type Dependencies struct {
-	Repos       *repository.Repository
-	Environment string
-	Domain      string
+	Repos        *repository.Repository
+	Environment  string
+	Domain       string
+	TurnDuration time.Duration
 }
 
 func NewService(deps Dependencies) *Service {
 	return &Service{
 		Restaurants:  restaurant.NewRestaurantService(deps.Repos.Restaurants),
 		Tables:       table.NewTableService(deps.Repos.Tables),
-		Reservations: reservation.NewReservationService(deps.Repos.Reservations),
+		Reservations: reservation.NewReservationService(deps.Repos.Reservations, deps.TurnDuration),
 		Photos:       photos.NewPhotosService(deps.Repos.Photos),
 	}
 }

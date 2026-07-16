@@ -4,7 +4,6 @@ import (
 	"context"
 	"dip/domain"
 	"errors"
-	"strings"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
@@ -12,30 +11,51 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// pgExclusionViolation is the SQLSTATE raised when an insert or update conflicts
+// with an EXCLUDE constraint (here: an overlapping reservation for a table).
+const pgExclusionViolation = "23P01"
+
 type ReservationRepo struct {
 	db *pgxpool.Pool
 }
 
 func NewReservationRepo(db *pgxpool.Pool) *ReservationRepo {
-	return &ReservationRepo{
-		db: db,
-	}
+	return &ReservationRepo{db: db}
+}
+
+// reservationSelect lists columns explicitly (rather than restaurants.*) so the
+// scan order is stable when a joined table gains a column.
+const reservationSelect = `
+SELECT r.id, r.userid,
+       t.id, t.numberofseats, t.isreserved, t.tablenumber,
+       rest.id, rest.name, rest.address, rest.contact,
+       r.start_at, r.party_size, r.confirmed
+FROM reservations r
+JOIN restables t ON r.tableid = t.id
+JOIN restaurants rest ON t.restaurantid = rest.id`
+
+func scanReservation(row pgx.Row, res *domain.ReservationStruct) error {
+	return row.Scan(
+		&res.ID, &res.UserID,
+		&res.Table.ID, &res.Table.NumberOfSeats, &res.Table.IsReserved, &res.Table.TableNumber,
+		&res.Table.Restaurant.ID, &res.Table.Restaurant.Name, &res.Table.Restaurant.Address, &res.Table.Restaurant.Contact,
+		&res.StartAt, &res.PartySize, &res.Confirmed,
+	)
 }
 
 func (r *ReservationRepo) Create(ctx context.Context, reservation *domain.ReservationSql) error {
-	query := `
-	INSERT INTO reservations (userid, tableid, reservationtime, reservationdate, confirmed) 
-VALUES ($1, $2, $3, CURRENT_DATE, $4)
-RETURNING id;`
-	args := []any{reservation.UserID, reservation.TableID, reservation.ReservationTime, reservation.Confirmed}
-
-	err := r.db.QueryRow(ctx, query, args...).Scan(&reservation.ID)
+	const query = `
+		INSERT INTO reservations (userid, tableid, start_at, ends_at, party_size, confirmed)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id`
+	err := r.db.QueryRow(ctx, query,
+		reservation.UserID, reservation.TableID, reservation.StartAt, reservation.EndsAt,
+		reservation.PartySize, reservation.Confirmed,
+	).Scan(&reservation.ID)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			if strings.Contains(pgErr.ConstraintName, "reservationTime") {
-				return domain.ErrDuplicateKeyErr
-			}
+		if errors.As(err, &pgErr) && pgErr.Code == pgExclusionViolation {
+			return domain.ErrTableOccupied
 		}
 		return err
 	}
@@ -43,166 +63,65 @@ RETURNING id;`
 }
 
 func (r *ReservationRepo) Delete(ctx context.Context, reservationId uuid.UUID) error {
-	query := `DELETE FROM reservations WHERE id = $1`
-
-	_, err := r.db.Exec(ctx, query, reservationId)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId string) ([]*domain.ReservationStruct, error) {
-	query := `SELECT reservations.id, reservations.userid, restables.id, restables.numberofseats,
-              restables.isreserved, restables.tablenumber, restaurants.*, reservations.reservationtime,
-              reservations.reservationdate, reservations.confirmed
-              FROM reservations 
-              JOIN restables ON reservations.tableid = restables.id 
-              JOIN restaurants ON restables.restaurantid = restaurants.id 
-              WHERE reservations.userid = $1`
-
-	rows, err := r.db.Query(ctx, query, userId)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrNotFoundInDB
-		}
-		return nil, err
-	}
-	reservations := make([]*domain.ReservationStruct, 0)
-	for rows.Next() {
-		reservation := new(domain.ReservationStruct)
-		err := rows.Scan(
-			&reservation.ID,
-			&reservation.UserID,
-			&reservation.Table.ID,
-			&reservation.Table.NumberOfSeats,
-			&reservation.Table.IsReserved,
-			&reservation.Table.TableNumber,
-			&reservation.Table.Restaurant.ID,
-			&reservation.Table.Restaurant.Name,
-			&reservation.Table.Restaurant.Address,
-			&reservation.Table.Restaurant.Contact,
-			&reservation.ReservationTime,
-			&reservation.ReservationDate,
-			&reservation.Confirmed,
-		)
-		if err != nil {
-			return nil, err
-		}
-		reservations = append(reservations, reservation)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return reservations, nil
+	_, err := r.db.Exec(ctx, `DELETE FROM reservations WHERE id = $1`, reservationId)
+	return err
 }
 
 func (r *ReservationRepo) GetById(ctx context.Context, resId uuid.UUID) (*domain.ReservationStruct, error) {
-	query := `SELECT reservations.id, reservations.userid, restables.id, restables.numberofseats,
-              restables.isreserved, restables.tablenumber, restaurants.*, reservations.reservationtime,
-              reservations.reservationdate, reservations.confirmed
-              FROM reservations 
-              JOIN restables ON reservations.tableid = restables.id 
-              JOIN restaurants ON restables.restaurantid = restaurants.id 
-              WHERE reservations.id = $1`
-	var reservation domain.ReservationStruct
-	err := r.db.QueryRow(ctx, query, resId).Scan(
-		&reservation.ID,
-		&reservation.UserID,
-		&reservation.Table.ID,
-		&reservation.Table.NumberOfSeats,
-		&reservation.Table.IsReserved,
-		&reservation.Table.TableNumber,
-		&reservation.Table.Restaurant.ID,
-		&reservation.Table.Restaurant.Name,
-		&reservation.Table.Restaurant.Address,
-		&reservation.Table.Restaurant.Contact,
-		&reservation.ReservationTime,
-		&reservation.ReservationDate,
-		&reservation.Confirmed,
-	)
+	var res domain.ReservationStruct
+	err := scanReservation(r.db.QueryRow(ctx, reservationSelect+` WHERE r.id = $1`, resId), &res)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFoundInDB
 		}
 		return nil, err
 	}
+	return &res, nil
+}
 
-	return &reservation, nil
+func (r *ReservationRepo) list(ctx context.Context, whereClause string, arg any) ([]*domain.ReservationStruct, error) {
+	rows, err := r.db.Query(ctx, reservationSelect+whereClause, arg)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	reservations := make([]*domain.ReservationStruct, 0)
+	for rows.Next() {
+		res := new(domain.ReservationStruct)
+		if err := scanReservation(rows, res); err != nil {
+			return nil, err
+		}
+		reservations = append(reservations, res)
+	}
+	return reservations, rows.Err()
+}
+
+func (r *ReservationRepo) GetAllByUserId(ctx context.Context, userId string) ([]*domain.ReservationStruct, error) {
+	return r.list(ctx, ` WHERE r.userid = $1 ORDER BY r.start_at`, userId)
 }
 
 func (r *ReservationRepo) GetAllByRestaurantId(ctx context.Context, restaurantId string) ([]*domain.ReservationStruct, error) {
-	query := `SELECT reservations.id, reservations.userid, restables.id, restables.numberofseats,
-              restables.isreserved, restables.tablenumber, restaurants.*, reservations.reservationtime,
-              reservations.reservationdate, reservations.confirmed
-              FROM reservations 
-              JOIN restables ON reservations.tableid = restables.id 
-              JOIN restaurants ON restables.restaurantid = restaurants.id 
-              WHERE restaurants.id = $1 AND reservations.reservationdate = CURRENT_DATE`
-
-	rows, err := r.db.Query(ctx, query, restaurantId)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrNotFoundInDB
-		}
-		return nil, err
-	}
-	reservations := make([]*domain.ReservationStruct, 0)
-	for rows.Next() {
-		reservation := new(domain.ReservationStruct)
-		err := rows.Scan(
-			&reservation.ID,
-			&reservation.UserID,
-			&reservation.Table.ID,
-			&reservation.Table.NumberOfSeats,
-			&reservation.Table.IsReserved,
-			&reservation.Table.TableNumber,
-			&reservation.Table.Restaurant.ID,
-			&reservation.Table.Restaurant.Name,
-			&reservation.Table.Restaurant.Address,
-			&reservation.Table.Restaurant.Contact,
-			&reservation.ReservationTime,
-			&reservation.ReservationDate,
-			&reservation.Confirmed,
-		)
-		if err != nil {
-			return nil, err
-		}
-		reservations = append(reservations, reservation)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return reservations, nil
+	return r.list(ctx, ` WHERE rest.id = $1 AND r.start_at::date = CURRENT_DATE ORDER BY r.start_at`, restaurantId)
 }
+
 func (r *ReservationRepo) Update(ctx context.Context, upReserv *domain.ReservationSql) error {
-	tx, err := r.db.Begin(ctx)
+	const query = `
+		UPDATE reservations
+		SET tableid = $1, start_at = $2, ends_at = $3, party_size = $4, confirmed = $5
+		WHERE id = $6`
+	ct, err := r.db.Exec(ctx, query,
+		upReserv.TableID, upReserv.StartAt, upReserv.EndsAt, upReserv.PartySize, upReserv.Confirmed, upReserv.ID,
+	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgExclusionViolation {
+			return domain.ErrTableOccupied
+		}
 		return err
 	}
-
-	query := "UPDATE reservations SET tableid = $1, reservationtime = $2, reservationdate = CURRENT_DATE, confirmed = $3 WHERE id = $4"
-	_, err = tx.Exec(ctx, query, upReserv.TableID, upReserv.ReservationTime, upReserv.Confirmed, upReserv.ID)
-	if err != nil {
-		tx.Rollback(ctx)
-		return err
-	}
-
-	return tx.Commit(ctx)
-}
-
-func (r *ReservationRepo) TableOccupied(ctx context.Context, tableID uuid.UUID, reservationTime string) error {
-	query := `SELECT EXISTS (SELECT 1 FROM reservations WHERE tableid = $1 AND reservationtime = $2)`
-	var exists bool
-	err := r.db.QueryRow(ctx, query, tableID, reservationTime).Scan(&exists)
-	if err != nil {
-		return err
-	}
-	if exists {
-		return domain.ErrTableOccupied
+	if ct.RowsAffected() == 0 {
+		return domain.ErrNotFoundInDB
 	}
 	return nil
 }
