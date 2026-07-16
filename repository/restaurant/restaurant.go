@@ -127,7 +127,7 @@ func (r *RestaurantRepo) UpdateById(ctx context.Context, upRest *domain.Restaura
 	query := "UPDATE restaurants SET name = $1, address = $2, contact = $3 WHERE id = $4"
 	_, err = tx.Exec(ctx, query, upRest.Name, upRest.Address, upRest.Contact, upRest.ID)
 	if err != nil {
-		tx.Rollback(ctx)
+		_ = tx.Rollback(ctx)
 		return err
 	}
 

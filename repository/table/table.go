@@ -108,7 +108,7 @@ func (r *TableRepo) UpdateById(ctx context.Context, upTable *domain.TableSql) er
 	query := "UPDATE restables SET numberofseats = $1, isreserved = $2, tablenumber = $3  WHERE id = $4"
 	_, err = tx.Exec(ctx, query, upTable.NumberOfSeats, upTable.IsReserved, upTable.TableNumber, upTable.ID)
 	if err != nil {
-		tx.Rollback(ctx)
+		_ = tx.Rollback(ctx)
 		return err
 	}
 

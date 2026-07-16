@@ -51,7 +51,7 @@ func collectorHasService(queryURL, serviceName string) bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var body struct {
 		Data []string `json:"data"`
 	}
