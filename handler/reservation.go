@@ -83,6 +83,9 @@ func (h *Handler) MakeReservation(ctx context.Context, input *proto_reservation.
 		if errors.Is(err, domain.ErrTableOccupied) {
 			return nil, status.Error(codes.AlreadyExists, domain.ErrTableOccupied.Error())
 		}
+		if errors.Is(err, domain.ErrTooManyActiveReservations) {
+			return nil, status.Error(codes.ResourceExhausted, domain.ErrTooManyActiveReservations.Error())
+		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 

@@ -9,6 +9,10 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+// maxActiveReservationsPerUser caps how many not-yet-ended reservations a single
+// user may hold at once, to blunt hoarding and abuse.
+const maxActiveReservationsPerUser = 5
+
 type ReservationService struct {
 	repo repo.Reservations
 	// turnDuration is the restaurant's seating length; the reservation occupies
@@ -21,6 +25,14 @@ func NewReservationService(repo repo.Reservations, turnDuration time.Duration) *
 }
 
 func (s *ReservationService) Create(ctx context.Context, reservation *domain.ReservationInputSql) (string, error) {
+	active, err := s.repo.CountActiveByUser(ctx, reservation.UserID)
+	if err != nil {
+		return "", err
+	}
+	if active >= maxActiveReservationsPerUser {
+		return "", domain.ErrTooManyActiveReservations
+	}
+
 	newReservation := domain.ReservationSql{
 		UserID:    reservation.UserID,
 		TableID:   reservation.TableID,

@@ -23,6 +23,16 @@ func NewReservationRepo(db *pgxpool.Pool) *ReservationRepo {
 	return &ReservationRepo{db: db}
 }
 
+// CountActiveByUser returns how many of the user's reservations have not yet
+// ended, used to cap how many active bookings a single user may hold.
+func (r *ReservationRepo) CountActiveByUser(ctx context.Context, userID string) (int, error) {
+	var count int
+	err := r.db.QueryRow(ctx,
+		`SELECT count(*) FROM reservations WHERE userid = $1 AND ends_at > now()`,
+		userID).Scan(&count)
+	return count, err
+}
+
 // reservationSelect lists columns explicitly (rather than restaurants.*) so the
 // scan order is stable when a joined table gains a column.
 const reservationSelect = `
