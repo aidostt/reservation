@@ -8,6 +8,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 )
 
@@ -16,11 +18,19 @@ type Server struct {
 }
 
 func NewServer() *Server {
-	return &Server{
-		GrpcServer: grpc.NewServer(
-			grpc.ChainUnaryInterceptor(recoveryInterceptor, grpcauth.UnaryInterceptor),
-		),
-	}
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(recoveryInterceptor, grpcauth.UnaryInterceptor),
+	)
+	registerHealth(grpcServer)
+	return &Server{GrpcServer: grpcServer}
+}
+
+// registerHealth exposes the standard gRPC health service so orchestrators can
+// probe the server.
+func registerHealth(s *grpc.Server) {
+	h := health.NewServer()
+	grpc_health_v1.RegisterHealthServer(s, h)
+	h.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
 }
 
 // recoveryInterceptor turns a panic in a handler into an Internal error rather
