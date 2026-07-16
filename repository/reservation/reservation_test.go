@@ -3,59 +3,24 @@ package reservation
 import (
 	"context"
 	"dip/domain"
+	"dip/repository/testsupport"
 	"errors"
-	"os"
-	"path/filepath"
-	"sort"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-// setupPostgres starts a throwaway PostgreSQL, applies the migrations and
-// returns a connected pool. It skips (rather than fails) when Docker is not
-// available, so unit-only environments are unaffected.
+// setupPostgres starts a throwaway PostgreSQL with the migrations applied. It
+// skips (rather than fails) when Docker is not available, so unit-only
+// environments are unaffected.
 func setupPostgres(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	ctx := context.Background()
-
-	container, err := postgres.Run(ctx, "postgres:16",
-		postgres.WithDatabase("reservista"),
-		postgres.WithUsername("postgres"),
-		postgres.WithPassword("test"),
-		postgres.BasicWaitStrategies(),
-	)
+	pool, cleanup, err := testsupport.SetupPostgres(context.Background())
 	if err != nil {
-		t.Skipf("cannot start postgres container (docker unavailable?): %v", err)
+		t.Skipf("cannot start postgres (docker unavailable?): %v", err)
 	}
-	t.Cleanup(func() { _ = container.Terminate(ctx) })
-
-	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("connection string: %v", err)
-	}
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("new pool: %v", err)
-	}
-	t.Cleanup(pool.Close)
-
-	files, err := filepath.Glob(filepath.Join("..", "..", "migrations", "*.up.sql"))
-	if err != nil || len(files) == 0 {
-		t.Fatalf("glob migrations: %v (found %d)", err, len(files))
-	}
-	sort.Strings(files)
-	for _, f := range files {
-		sql, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatalf("read %s: %v", f, err)
-		}
-		if _, err := pool.Exec(ctx, string(sql)); err != nil {
-			t.Fatalf("apply %s: %v", f, err)
-		}
-	}
+	t.Cleanup(cleanup)
 	return pool
 }
 
