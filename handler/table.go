@@ -176,12 +176,15 @@ func (h *Handler) DeleteTableById(ctx context.Context, input *proto_table.IDRequ
 	return &proto_table.StatusResponse{Status: true}, nil
 }
 
-func (h *Handler) GetAvailableTables(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableListResponse, error) {
-	if input.GetId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "id is required")
+func (h *Handler) GetAvailableTables(ctx context.Context, input *proto_table.AvailabilityRequest) (*proto_table.TableListResponse, error) {
+	if input.GetRestaurantId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "restaurant_id is required")
+	}
+	if input.GetStartAt() == nil {
+		return nil, status.Error(codes.InvalidArgument, "start_at is required")
 	}
 
-	tables, err := h.service.Tables.GetAvailable(ctx, input.GetId())
+	tables, err := h.service.Tables.GetAvailable(ctx, input.GetRestaurantId(), input.GetStartAt().AsTime())
 	if err != nil {
 		logger.Error(err)
 		switch {
@@ -197,7 +200,7 @@ func (h *Handler) GetAvailableTables(ctx context.Context, input *proto_table.IDR
 		tablesResponse[index] = &proto_table.TableObject{
 			Id:            table.ID.String(),
 			NumberOfSeats: int32(table.NumberOfSeats),
-			IsReserved:    table.IsReserved,
+			IsReserved:    false,
 			TableNumber:   int32(table.TableNumber),
 			Restaurant: &proto_table.RestaurantObject{
 				Id:      table.Restaurant.ID.String(),
@@ -212,12 +215,15 @@ func (h *Handler) GetAvailableTables(ctx context.Context, input *proto_table.IDR
 	}, nil
 }
 
-func (h *Handler) GetReservedTables(ctx context.Context, input *proto_table.IDRequest) (*proto_table.TableListResponse, error) {
-	if input.GetId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "id is required")
+func (h *Handler) GetReservedTables(ctx context.Context, input *proto_table.AvailabilityRequest) (*proto_table.TableListResponse, error) {
+	if input.GetRestaurantId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "restaurant_id is required")
+	}
+	if input.GetStartAt() == nil {
+		return nil, status.Error(codes.InvalidArgument, "start_at is required")
 	}
 
-	tables, err := h.service.Tables.GetReserved(ctx, input.GetId())
+	tables, err := h.service.Tables.GetReserved(ctx, input.GetRestaurantId(), input.GetStartAt().AsTime())
 	if err != nil {
 		logger.Error(err)
 		switch {
@@ -232,7 +238,7 @@ func (h *Handler) GetReservedTables(ctx context.Context, input *proto_table.IDRe
 		tablesResponse[index] = &proto_table.TableObject{
 			Id:            table.ID.String(),
 			NumberOfSeats: int32(table.NumberOfSeats),
-			IsReserved:    table.IsReserved,
+			IsReserved:    true,
 			TableNumber:   int32(table.TableNumber),
 			Restaurant: &proto_table.RestaurantObject{
 				Id:      table.Restaurant.ID.String(),

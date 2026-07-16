@@ -7,6 +7,7 @@ import (
 	"dip/repository/reservation"
 	"dip/repository/restaurant"
 	"dip/repository/table"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,10 +28,9 @@ type Tables interface {
 	GetAll(ctx context.Context) ([]*domain.TableStruct, error)
 	Create(ctx context.Context, res *domain.TableSql) error
 	UpdateById(ctx context.Context, upTable *domain.TableSql) error
-	SetStatusById(ctx context.Context, upTable *domain.StatusTableInputSql) error
 	Delete(ctx context.Context, tableId uuid.UUID) error
-	GetReserved(ctx context.Context, restid uuid.UUID) ([]*domain.TableStruct, error)
-	GetAvailable(ctx context.Context, restid uuid.UUID) ([]*domain.TableStruct, error)
+	GetReserved(ctx context.Context, restid uuid.UUID, startAt, endsAt time.Time) ([]*domain.TableStruct, error)
+	GetAvailable(ctx context.Context, restid uuid.UUID, startAt, endsAt time.Time) ([]*domain.TableStruct, error)
 	GetAllByRestaurantId(ctx context.Context, restId uuid.UUID) ([]*domain.TableStruct, error)
 }
 

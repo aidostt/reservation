@@ -26,11 +26,9 @@ type Tables interface {
 	GetAll(ctx context.Context) ([]*domain.TableStruct, error)
 	Create(ctx context.Context, res *domain.TableInputSql) error
 	UpdateById(ctx context.Context, upTable *domain.UpdateTableInputSql) error
-	MarkOccupied(ctx context.Context, tableId string) error
-	MarkVacant(ctx context.Context, tableId string) error
 	Delete(ctx context.Context, tableId string) error
-	GetAvailable(ctx context.Context, restid string) ([]*domain.TableStruct, error)
-	GetReserved(ctx context.Context, restid string) ([]*domain.TableStruct, error)
+	GetAvailable(ctx context.Context, restid string, startAt time.Time) ([]*domain.TableStruct, error)
+	GetReserved(ctx context.Context, restid string, startAt time.Time) ([]*domain.TableStruct, error)
 	GetAllByRestaurantId(ctx context.Context, restId string) ([]*domain.TableStruct, error)
 }
 
@@ -65,7 +63,7 @@ type Dependencies struct {
 func NewService(deps Dependencies) *Service {
 	return &Service{
 		Restaurants:  restaurant.NewRestaurantService(deps.Repos.Restaurants),
-		Tables:       table.NewTableService(deps.Repos.Tables),
+		Tables:       table.NewTableService(deps.Repos.Tables, deps.TurnDuration),
 		Reservations: reservation.NewReservationService(deps.Repos.Reservations, deps.TurnDuration),
 		Photos:       photos.NewPhotosService(deps.Repos.Photos),
 	}

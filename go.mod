@@ -3,7 +3,7 @@ module dip
 go 1.25.0
 
 require (
-	github.com/aidostt/protos v0.7.0
+	github.com/aidostt/protos v0.8.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
 	github.com/prometheus/client_golang v1.23.2

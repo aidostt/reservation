@@ -4,6 +4,8 @@ import (
 	"context"
 	"dip/domain"
 	"errors"
+	"time"
+
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -97,22 +99,6 @@ func (r *TableRepo) Create(ctx context.Context, table *domain.TableSql) error {
 	return nil
 }
 
-func (r *TableRepo) SetStatusById(ctx context.Context, upTable *domain.StatusTableInputSql) error {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return err
-	}
-
-	query := "UPDATE restables SET isreserved = $1 WHERE id = $2"
-	_, err = tx.Exec(ctx, query, upTable.IsReserved, upTable.TableID)
-	if err != nil {
-		tx.Rollback(ctx)
-		return err
-	}
-
-	return tx.Commit(ctx)
-}
-
 func (r *TableRepo) UpdateById(ctx context.Context, upTable *domain.TableSql) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -178,13 +164,18 @@ func (r *TableRepo) Delete(ctx context.Context, tableId uuid.UUID) error {
 	return nil
 }
 
-func (r *TableRepo) GetAvailable(ctx context.Context, restid uuid.UUID) ([]*domain.TableStruct, error) {
-	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
-from restables 
-join restaurants on restables.restaurantId = restaurants.id 
-where restables.restaurantid = $1 and restables.isreserved = false`
+func (r *TableRepo) GetAvailable(ctx context.Context, restid uuid.UUID, startAt, endsAt time.Time) ([]*domain.TableStruct, error) {
+	query := `Select restables.id, restables.numberofseats, restables.isreserved, restables.tablenumber, restaurants.*
+from restables
+join restaurants on restables.restaurantId = restaurants.id
+where restables.restaurantid = $1
+  and not exists (
+    select 1 from reservations
+    where reservations.tableid = restables.id
+      and reservations.period && tstzrange($2, $3)
+  )`
 
-	rows, err := r.db.Query(ctx, query, restid)
+	rows, err := r.db.Query(ctx, query, restid, startAt, endsAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFoundInDB
@@ -217,13 +208,18 @@ where restables.restaurantid = $1 and restables.isreserved = false`
 	return tables, nil
 }
 
-func (r *TableRepo) GetReserved(ctx context.Context, restid uuid.UUID) ([]*domain.TableStruct, error) {
-	query := `Select restables.id, restables.numberofseats, restables.isreserved,restables.tablenumber, restaurants.* 
-from restables 
-join restaurants on restables.restaurantId = restaurants.id 
-where restables.restaurantid = $1 and restables.isreserved = true`
+func (r *TableRepo) GetReserved(ctx context.Context, restid uuid.UUID, startAt, endsAt time.Time) ([]*domain.TableStruct, error) {
+	query := `Select restables.id, restables.numberofseats, restables.isreserved, restables.tablenumber, restaurants.*
+from restables
+join restaurants on restables.restaurantId = restaurants.id
+where restables.restaurantid = $1
+  and exists (
+    select 1 from reservations
+    where reservations.tableid = restables.id
+      and reservations.period && tstzrange($2, $3)
+  )`
 
-	rows, err := r.db.Query(ctx, query, restid)
+	rows, err := r.db.Query(ctx, query, restid, startAt, endsAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFoundInDB

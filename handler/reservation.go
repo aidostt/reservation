@@ -86,13 +86,6 @@ func (h *Handler) MakeReservation(ctx context.Context, input *proto_reservation.
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
-	// Flip the table's convenience flag after the reservation is persisted, so a
-	// rejected overlap never leaves a stale flag. Availability is authoritative
-	// via the reservation intervals, so a failure here is not fatal.
-	if err := h.service.Tables.MarkOccupied(ctx, input.GetTableID()); err != nil {
-		logger.Error(err)
-	}
-
 	return &proto_reservation.IDRequest{Id: id}, nil
 }
 
@@ -135,9 +128,6 @@ func (h *Handler) DeleteReservationById(ctx context.Context, input *proto_reserv
 		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
 	}
 
-	if err = h.service.Tables.MarkVacant(ctx, reserv.Table.ID.String()); err != nil {
-		logger.Error(err)
-	}
 	return &proto_reservation.StatusResponse{Status: true}, nil
 }
 
