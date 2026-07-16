@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"dip/domain"
+	"dip/internal/grpcauth"
 	"dip/internal/logger"
 	"errors"
 	"time"
@@ -48,6 +49,9 @@ func (h *Handler) MakeReservation(ctx context.Context, input *proto_reservation.
 	}
 	if input.GetPartySize() <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "party size must be positive")
+	}
+	if !grpcauth.FromContext(ctx).OwnsOrStaff(input.GetUserID()) {
+		return nil, status.Error(codes.PermissionDenied, "cannot make a reservation for another user")
 	}
 	startAt := input.GetStartAt().AsTime()
 	if startAt.Before(time.Now()) {
@@ -104,6 +108,9 @@ func (h *Handler) GetReservation(ctx context.Context, input *proto_reservation.I
 		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
+	if !grpcauth.FromContext(ctx).OwnsOrStaff(reservation.UserID) {
+		return nil, status.Error(codes.PermissionDenied, "access denied")
+	}
 	return toReservationObject(reservation), nil
 }
 
@@ -118,6 +125,9 @@ func (h *Handler) DeleteReservationById(ctx context.Context, input *proto_reserv
 			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.NotFound, domain.ErrNotFoundInDB.Error())
 		}
 		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+	}
+	if !grpcauth.FromContext(ctx).OwnsOrStaff(reserv.UserID) {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.PermissionDenied, "access denied")
 	}
 
 	if err = h.service.Reservations.DeleteById(ctx, input.GetId()); err != nil {
@@ -135,6 +145,9 @@ func (h *Handler) GetAllReservationByUserId(ctx context.Context, input *proto_re
 	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
+	if !grpcauth.FromContext(ctx).OwnsOrStaff(input.GetId()) {
+		return nil, status.Error(codes.PermissionDenied, "access denied")
+	}
 	reservations, err := h.service.Reservations.GetAllByUserId(ctx, input.GetId())
 	if err != nil {
 		logger.Error(err)
@@ -146,6 +159,9 @@ func (h *Handler) GetAllReservationByUserId(ctx context.Context, input *proto_re
 func (h *Handler) GetAllReservationByRestaurantId(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.ReservationListResponse, error) {
 	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+	if !grpcauth.FromContext(ctx).IsStaff() {
+		return nil, status.Error(codes.PermissionDenied, "access denied")
 	}
 	reservations, err := h.service.Reservations.GetAllByRestaurantId(ctx, input.GetId())
 	if err != nil {
@@ -177,7 +193,19 @@ func (h *Handler) UpdateReservation(ctx context.Context, input *proto_reservatio
 		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, "party size must be positive")
 	}
 
-	err := h.service.Reservations.Update(ctx, &domain.UpdateReservationInputSql{
+	existing, err := h.service.Reservations.GetById(ctx, input.GetReservationID())
+	if err != nil {
+		logger.Error(err)
+		if errors.Is(err, domain.ErrNotFoundInDB) {
+			return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.InvalidArgument, domain.ErrNotFoundInDB.Error())
+		}
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.Internal, "internal error")
+	}
+	if !grpcauth.FromContext(ctx).OwnsOrStaff(existing.UserID) {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.PermissionDenied, "access denied")
+	}
+
+	err = h.service.Reservations.Update(ctx, &domain.UpdateReservationInputSql{
 		ReservationID: input.GetReservationID(),
 		TableID:       input.GetTableID(),
 		StartAt:       input.GetStartAt().AsTime(),
@@ -210,6 +238,9 @@ func (h *Handler) GetRestaurantByReservationId(ctx context.Context, input *proto
 		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
+	if !grpcauth.FromContext(ctx).OwnsOrStaff(reserv.UserID) {
+		return nil, status.Error(codes.PermissionDenied, "access denied")
+	}
 	return &proto_reservation.RestaurantObject{
 		Id:      reserv.Table.Restaurant.ID.String(),
 		Name:    reserv.Table.Restaurant.Name,
@@ -230,12 +261,18 @@ func (h *Handler) GetTableByReservationId(ctx context.Context, input *proto_rese
 		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
+	if !grpcauth.FromContext(ctx).OwnsOrStaff(reserv.UserID) {
+		return nil, status.Error(codes.PermissionDenied, "access denied")
+	}
 	return toReservationObject(reserv).GetTable(), nil
 }
 
 func (h *Handler) ConfirmReservation(ctx context.Context, input *proto_reservation.IDRequest) (*proto_reservation.StatusResponse, error) {
 	if input.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+	if !grpcauth.FromContext(ctx).IsStaff() {
+		return &proto_reservation.StatusResponse{Status: false}, status.Error(codes.PermissionDenied, "access denied")
 	}
 	reservation, err := h.service.Reservations.GetById(ctx, input.GetId())
 	if err != nil {

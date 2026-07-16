@@ -1,8 +1,10 @@
 package server
 
 import (
-	"google.golang.org/grpc"
+	"dip/internal/grpcauth"
 	"net"
+
+	"google.golang.org/grpc"
 )
 
 type Server struct {
@@ -11,7 +13,7 @@ type Server struct {
 
 func NewServer() *Server {
 	return &Server{
-		GrpcServer: grpc.NewServer(),
+		GrpcServer: grpc.NewServer(grpc.UnaryInterceptor(grpcauth.UnaryInterceptor)),
 	}
 
 }
