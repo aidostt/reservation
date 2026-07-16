@@ -13,6 +13,7 @@ import (
 
 	"context"
 	"dip/internal/logger"
+	"dip/internal/tracing"
 	"errors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
@@ -28,6 +29,13 @@ func Run(configPath, envPath string) {
 		logger.Error(err)
 
 		return
+	}
+
+	shutdownTracing, err := tracing.Init(context.Background(), "reservation-service")
+	if err != nil {
+		logger.Errorf("tracing init: %s", err.Error())
+	} else {
+		defer func() { _ = shutdownTracing(context.Background()) }()
 	}
 	pool, err := pgxpool.New(context.Background(), fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.DBName))
 	if err != nil {
