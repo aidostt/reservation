@@ -2,7 +2,7 @@ package restaurant
 
 import (
 	"context"
-	"dip/domain"
+	"dip/internal/domain"
 	"errors"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v5"

@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
-	"dip/domain"
-	"dip/repository/photos"
-	"dip/repository/reservation"
-	"dip/repository/restaurant"
-	"dip/repository/table"
+	"dip/internal/domain"
+	"dip/internal/repository/photos"
+	"dip/internal/repository/reservation"
+	"dip/internal/repository/restaurant"
+	"dip/internal/repository/table"
 	"time"
 
 	"github.com/gofrs/uuid"

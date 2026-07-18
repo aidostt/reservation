@@ -1,9 +1,9 @@
-package handler
+package delivery
 
 import (
 	"context"
-	"dip/domain"
-	"dip/internal/logger"
+	"dip/internal/domain"
+	"dip/pkg/logger"
 	"errors"
 	proto_table "github.com/aidostt/protos/gen/go/reservista/table"
 	"google.golang.org/grpc/codes"

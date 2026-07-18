@@ -2,7 +2,7 @@ package table
 
 import (
 	"context"
-	"dip/domain"
+	"dip/internal/domain"
 	"errors"
 	"time"
 

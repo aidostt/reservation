@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"dip/internal/grpcauth"
-	"dip/internal/logger"
+	"dip/pkg/logger"
 	"net"
 	"time"
 

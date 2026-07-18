@@ -1,19 +1,19 @@
 package app
 
 import (
-	"dip/handler"
 	"dip/internal/config"
+	"dip/internal/delivery"
 	"fmt"
 	"log"
 	"net"
 
+	"dip/internal/repository"
 	"dip/internal/server"
-	"dip/repository"
-	"dip/service"
+	"dip/internal/service"
 
 	"context"
-	"dip/internal/logger"
-	"dip/internal/tracing"
+	"dip/pkg/logger"
+	"dip/pkg/tracing"
 	"errors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
@@ -52,7 +52,7 @@ func Run(configPath, envPath string) {
 		Repos:        repos,
 		TurnDuration: cfg.TurnDuration,
 	})
-	handlers := handler.NewHandler(services)
+	handlers := delivery.NewHandler(services)
 
 	// gRPC Server
 	srv := server.NewServer()

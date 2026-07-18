@@ -1,10 +1,10 @@
-package handler
+package delivery
 
 import (
 	"context"
-	"dip/domain"
+	"dip/internal/domain"
 	"dip/internal/grpcauth"
-	"dip/internal/logger"
+	"dip/pkg/logger"
 	"errors"
 	"time"
 

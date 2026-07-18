@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
-	"dip/domain"
-	"dip/repository"
-	"dip/service/photos"
-	"dip/service/reservation"
-	"dip/service/restaurant"
-	"dip/service/table"
+	"dip/internal/domain"
+	"dip/internal/repository"
+	"dip/internal/service/photos"
+	"dip/internal/service/reservation"
+	"dip/internal/service/restaurant"
+	"dip/internal/service/table"
 	"time"
 )
 

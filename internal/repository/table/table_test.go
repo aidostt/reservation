@@ -2,9 +2,9 @@ package table
 
 import (
 	"context"
-	"dip/domain"
-	"dip/repository/reservation"
-	"dip/repository/testsupport"
+	"dip/internal/domain"
+	"dip/internal/repository/reservation"
+	"dip/internal/repository/testsupport"
 	"reflect"
 	"sort"
 	"testing"

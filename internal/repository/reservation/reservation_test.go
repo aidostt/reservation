@@ -2,8 +2,8 @@ package reservation
 
 import (
 	"context"
-	"dip/domain"
-	"dip/repository/testsupport"
+	"dip/internal/domain"
+	"dip/internal/repository/testsupport"
 	"errors"
 	"testing"
 	"time"

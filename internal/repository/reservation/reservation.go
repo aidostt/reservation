@@ -2,7 +2,7 @@ package reservation
 
 import (
 	"context"
-	"dip/domain"
+	"dip/internal/domain"
 	"errors"
 
 	"github.com/gofrs/uuid"

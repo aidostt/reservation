@@ -2,8 +2,8 @@ package reservation
 
 import (
 	"context"
-	"dip/domain"
-	repo "dip/repository"
+	"dip/internal/domain"
+	repo "dip/internal/repository"
 	"time"
 
 	"github.com/gofrs/uuid"
